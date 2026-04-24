@@ -1,7 +1,7 @@
 export type PermissionLevel = "read_only" | "suggest_only" | "draft_only" | "execute_with_approval" | "execute_auto";
 export type RiskLevel = "low" | "medium" | "high" | "critical";
 export type RoomStatus = "active" | "planning" | "paused" | "archived";
-export type AgentStatus = "idle" | "planning" | "working" | "blocked" | "reviewing";
+export type AgentStatus = "idle" | "thinking" | "planning" | "working" | "reviewing" | "waiting_for_approval" | "blocked" | "done";
 export type TaskStatus = "backlog" | "next" | "in_progress" | "review" | "done";
 export type TaskPriority = "low" | "medium" | "high" | "urgent";
 export type IntegrationStatus = "connected" | "disconnected" | "needs_setup" | "error";
