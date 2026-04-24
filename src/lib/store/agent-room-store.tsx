@@ -107,6 +107,7 @@ interface RiskDetection {
 }
 
 interface AgentRoomStoreValue {
+  hasMounted: boolean;
   getRoomState: (roomId: RoomId) => RoomRuntimeState;
   getDataMode: (roomId: RoomId) => DataMode;
   createConsoleMessage: (roomId: RoomId, message: ConsoleMessageInput) => void;
@@ -372,19 +373,30 @@ function latestEvent(roomState: RoomRuntimeState, integrationId: IntegrationId) 
 }
 
 export function AgentRoomStoreProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<AgentRoomRuntimeState>(() => {
-    if (typeof window === "undefined") return createInitialState();
-    try {
-      const stored = window.localStorage.getItem(STORAGE_KEY);
-      return stored ? mergeSavedState(JSON.parse(stored)) : createInitialState();
-    } catch {
-      return createInitialState();
-    }
-  });
+  const [state, setState] = useState<AgentRoomRuntimeState>(createInitialState);
+  const [hasMounted, setHasMounted] = useState(false);
 
   useEffect(() => {
+    const restoreTimer = window.setTimeout(() => {
+      try {
+        const stored = window.localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          setState(mergeSavedState(JSON.parse(stored)));
+        }
+      } catch {
+        setState(createInitialState());
+      } finally {
+        setHasMounted(true);
+      }
+    }, 0);
+
+    return () => window.clearTimeout(restoreTimer);
+  }, []);
+
+  useEffect(() => {
+    if (!hasMounted) return;
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }, [state]);
+  }, [hasMounted, state]);
 
   const getRoomState = useCallback((roomId: RoomId) => getRuntime(state, roomId), [state]);
   const getDataMode = useCallback((roomId: RoomId) => modeForRoom(getRuntime(state, roomId)), [state]);
@@ -782,6 +794,7 @@ export function AgentRoomStoreProvider({ children }: { children: React.ReactNode
 
   const value = useMemo<AgentRoomStoreValue>(
     () => ({
+      hasMounted,
       getRoomState,
       getDataMode,
       createConsoleMessage,
@@ -797,6 +810,7 @@ export function AgentRoomStoreProvider({ children }: { children: React.ReactNode
     }),
     [
       addActivityEvent,
+      hasMounted,
       createApproval,
       createConsoleMessage,
       getDataMode,
