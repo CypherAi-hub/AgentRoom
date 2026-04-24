@@ -1,0 +1,3 @@
+import { AgentCard } from "@/components/cards";
+import { mockAgents } from "@/lib/mock-data";
+export default function AgentsPage() { return <div className="flex flex-col gap-6"><div><p className="text-sm font-medium uppercase tracking-[0.18em] text-muted-foreground">Agent Directory</p><h1 className="mt-2 text-3xl font-semibold">Reusable AI operators</h1><p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">Agents are data-backed roles with scoped tools, permissions, memory summaries, current tasks, and output history.</p></div><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{mockAgents.map((a) => <AgentCard key={a.id} agent={a} />)}</div></div>; }

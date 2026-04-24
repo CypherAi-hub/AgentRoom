@@ -1,0 +1,13 @@
+{
+  "name": "agentroom",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "chokidar": "^4.0.3",
+    "express": "^5.1.0"
+  }
+}

@@ -1,75 +1,56 @@
-# AgentRoom
+# Agent Room
 
-AgentRoom is a local mission-control dashboard for AI coding agents. It watches local feed files and turns agent activity into visible checkpoints, commands run, files touched, blockers, validation status, and screenshot/video proof.
+Agent Room is a mock-first AI command center for builders who are tired of scattered tools. Every project gets its own operating room with agents, tools, workflows, approvals, tasks, and live activity.
 
-## Why It Exists
+FoFit is the flagship room for this MVP.
 
-AI coding agents often work invisibly and return with vague claims. AgentRoom gives that work a local control room so you can see:
-
-- what each agent is doing
-- which files it inspected or touched
-- what commands it ran
-- what passed, failed, or blocked progress
-- whether there is screenshot or video proof
-
-## Quick Start
+## Run locally
 
 ```bash
 npm install
-npm start
+npm run dev
 ```
 
-Then open:
+Open `http://localhost:3000/dashboard`.
 
-```text
-http://localhost:4545
-```
-
-AgentRoom reads from the repo-local `.agent-feed` directory.
-
-## Feed Format
-
-Agents should append checkpoint blocks to `.agent-feed/live.md` or a per-agent file such as `.agent-feed/agent-a.md`.
-
-```md
-## LIVE FEED CHECKPOINT
-Time:
-Agent:
-Phase:
-Status:
-Files inspected:
-Commands run:
-Touched files:
-Key finding:
-Blockers:
-Next action:
-```
-
-## Proof Files
-
-AgentRoom displays:
-
-- `.agent-feed/screenshots/latest.png`
-- `.agent-feed/videos/latest.mp4`
-
-Use repo-local `$PWD` paths so the commands work on any machine:
+Checks:
 
 ```bash
-xcrun simctl io booted screenshot "$PWD/.agent-feed/screenshots/latest.png"
-xcrun simctl io booted recordVideo "$PWD/.agent-feed/videos/latest.mp4"
+npm run lint
+npm run build
 ```
 
-## Safety Note
+## Routes
 
-AgentRoom is a local dashboard. It reads local feed/proof files and serves them in your browser. It does not execute agent code, deploy projects, modify databases, or push to GitHub.
+`/dashboard`, `/rooms`, `/rooms/fofit`, `/rooms/fofit/agents`, `/rooms/fofit/tasks`, `/rooms/fofit/activity`, `/rooms/fofit/workflows`, `/rooms/fofit/approvals`, `/integrations`, `/agents`, `/settings`.
 
-Keep secrets, env files, credentials, and private screenshots out of `.agent-feed` before publishing or sharing a repo.
+## Mocked
 
-## Roadmap
+The MVP uses typed mock data in `src/lib/mock-data.ts`: 3 rooms, 8 agents, 12 integrations, 20 tasks, 20 activity events, 8 approvals, and 6 workflows.
 
-- Per-agent proof folders
-- Run history and archived sessions
-- Search and filters for checkpoints
-- Merge-readiness summaries
-- Command allowlists for proof capture
-- Native macOS AgentRoom after the web workflow stabilizes
+No real API keys, auth, billing, database connection, deployments, or external side effects are active.
+
+## Real-ready foundation
+
+Integration adapters live in `src/lib/integrations/` and expose `connect`, `disconnect`, `getStatus`, `sync`, `getActivity`, `createTask`, `executeAction`, and `validatePermissions`.
+
+Risk and approval logic lives in `src/lib/permissions.ts`. High-risk actions always require approval: production deploys, PR merges, database deletes, DNS changes, Stripe product changes, external messages, env var changes, auth/security changes, billing changes, and user data deletion.
+
+The future Supabase schema and RLS intent live in `supabase/schema.sql`. Environment placeholders live in `.env.example`.
+
+## Legacy prototype
+
+The original Express/local live-feed prototype is preserved in `legacy/local-live-feed/`. It can become a future read-only Local Agent Feed adapter.
+
+## Next steps
+
+1. Verify every route in browser on desktop and mobile.
+2. Add Supabase Auth and workspace sessions.
+3. Wire read-only GitHub activity sync.
+4. Wire Vercel deployment status.
+5. Wire Supabase project health.
+6. Wire Stripe read-only product/subscription status.
+7. Wire Sentry issue sync.
+8. Persist approvals and audit logs.
+9. Add workflow run history.
+10. Add background jobs/webhooks.

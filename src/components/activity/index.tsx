@@ -1,0 +1,8 @@
+import { GitBranch, Radio } from "lucide-react";
+import { RiskBadge } from "@/components/cards";
+import { Card, CardContent } from "@/components/ui/primitives";
+import { getAgent, getIntegration } from "@/lib/mock-data";
+import { formatDateTime } from "@/lib/utils";
+import type { ActivityEvent } from "@/types";
+export function ActivityEventItem({ event }: { event: ActivityEvent }) { const integration = getIntegration(event.integrationId); const agent = getAgent(event.agentId); return <article className="flex gap-3 rounded-lg border bg-card/70 p-4"><div className="mt-1 grid size-8 shrink-0 place-items-center rounded-full bg-secondary text-muted-foreground">{integration ? <GitBranch className="size-4" /> : <Radio className="size-4" />}</div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h3 className="text-sm font-semibold">{event.title}</h3><RiskBadge risk={event.riskLevel} /></div><p className="mt-1 text-sm leading-6 text-muted-foreground">{event.summary}</p><div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground"><span>{formatDateTime(event.createdAt)}</span>{integration ? <span>{integration.name}</span> : null}{agent ? <span>{agent.name}</span> : null}</div></div></article>; }
+export function ActivityFeed({ events, limit }: { events: ActivityEvent[]; limit?: number }) { const visible = limit ? events.slice(0, limit) : events; if (!visible.length) return <Card className="border-dashed"><CardContent className="p-8 text-center text-sm text-muted-foreground">No activity yet.</CardContent></Card>; return <div className="flex flex-col gap-3">{visible.map((event) => <ActivityEventItem key={event.id} event={event} />)}</div>; }

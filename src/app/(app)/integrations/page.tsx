@@ -1,0 +1,3 @@
+import { IntegrationCard } from "@/components/cards";
+import { mockIntegrations } from "@/lib/mock-data";
+export default function IntegrationsPage() { return <div className="flex flex-col gap-6"><div><p className="text-sm font-medium uppercase tracking-[0.18em] text-muted-foreground">Integration Hub</p><h1 className="mt-2 text-3xl font-semibold">Tools and connection health</h1><p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">Mock integration cards show status, health, phase, permissions, last sync, setup state, and future capabilities.</p></div><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{mockIntegrations.map((i) => <IntegrationCard key={i.id} integration={i} />)}</div></div>; }
