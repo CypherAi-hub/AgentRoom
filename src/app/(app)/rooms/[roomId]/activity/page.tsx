@@ -1,0 +1,4 @@
+import { notFound } from "next/navigation";
+import { ActivityFeed } from "@/components/activity";
+import { getRoomBySlug, getRoomEvents } from "@/lib/mock-data";
+export default async function RoomActivityPage({ params }: { params: Promise<{ roomId: string }> }) { const { roomId } = await params; const room = getRoomBySlug(roomId); if (!room) notFound(); return <div className="flex flex-col gap-6"><div><p className="text-sm font-medium uppercase tracking-[0.18em] text-muted-foreground">{room.name}</p><h1 className="mt-2 text-3xl font-semibold">Live activity feed</h1><p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">A unified mock feed from GitHub, Vercel, Sentry, Stripe, Supabase, Linear, Figma, Jam, Notion, Amplitude, and Cloudflare.</p></div><ActivityFeed events={getRoomEvents(room.id)} /></div>; }

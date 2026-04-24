@@ -1,0 +1,3 @@
+import { RoomCard } from "@/components/cards";
+import { mockRooms } from "@/lib/mock-data";
+export default function RoomsPage() { return <div className="flex flex-col gap-6"><div><p className="text-sm font-medium uppercase tracking-[0.18em] text-muted-foreground">Rooms</p><h1 className="mt-2 text-3xl font-semibold">Project operating rooms</h1><p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">Each room represents a project, product, client, workflow, or launch system with its own agents, tools, tasks, and approvals.</p></div><div className="grid gap-4 md:grid-cols-3">{mockRooms.map((room) => <RoomCard key={room.id} room={room} featured={room.id === "room_fofit"} />)}</div></div>; }
