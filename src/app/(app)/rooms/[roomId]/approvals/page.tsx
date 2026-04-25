@@ -1,4 +1,22 @@
-import { notFound } from "next/navigation";
-import { ApprovalCard } from "@/components/approvals";
-import { getRoomApprovals, getRoomBySlug } from "@/lib/mock-data";
-export default async function RoomApprovalsPage({ params }: { params: Promise<{ roomId: string }> }) { const { roomId } = await params; const room = getRoomBySlug(roomId); if (!room) notFound(); return <div className="flex flex-col gap-6"><div><p className="text-sm font-medium uppercase tracking-[0.18em] text-muted-foreground">{room.name}</p><h1 className="mt-2 text-3xl font-semibold">Approval center</h1><p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">High-risk actions are never executed automatically. Approve and deny controls are local mock state for the MVP.</p></div><div className="grid gap-4 xl:grid-cols-2">{getRoomApprovals(room.id).map((a) => <ApprovalCard key={a.id} approval={a} />)}</div></div>; }
+import { RoomApprovalsList } from "@/components/approvals";
+import { RoomNotFound } from "@/components/rooms/room-not-found";
+import { getRoomBySlug } from "@/lib/mock-data";
+
+export default async function RoomApprovalsPage({ params }: { params: Promise<{ roomId: string }> }) {
+  const { roomId } = await params;
+  const room = getRoomBySlug(roomId);
+  if (!room) return <RoomNotFound />;
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div>
+        <p className="text-sm font-medium uppercase tracking-[0.18em] text-muted-foreground">{room.name}</p>
+        <h1 className="mt-2 text-3xl font-semibold">Approval center</h1>
+        <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+          High-risk actions are never executed automatically. Approve and deny controls stay local in the MVP.
+        </p>
+      </div>
+      <RoomApprovalsList roomId={room.id} />
+    </div>
+  );
+}

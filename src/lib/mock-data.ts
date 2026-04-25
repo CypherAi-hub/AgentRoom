@@ -4,7 +4,7 @@ export const userId = "user_kenan" as const;
 const ts = "2026-04-24T15:30:00.000Z";
 export const mockRooms: Room[] = [
   { id: "room_fofit", workspaceId, name: "FoFit", slug: "fofit", mission: "Ship a fitness app that turns AI-guided training, progress, and launch operations into one focused founder workflow.", status: "active", accentColor: "#7dd3fc", launchProgress: 64, ownerUserId: userId, createdAt: "2026-04-10T14:00:00.000Z", updatedAt: ts },
-  { id: "room_portfolio", workspaceId, name: "Personal Portfolio", slug: "portfolio", mission: "Create a premium founder portfolio that shows products, proof, and current build velocity.", status: "planning", accentColor: "#a7f3d0", launchProgress: 38, ownerUserId: userId, createdAt: "2026-04-12T16:00:00.000Z", updatedAt: ts },
+  { id: "room_portfolio", workspaceId, name: "Personal Portfolio", slug: "personal-portfolio", mission: "Create a premium founder portfolio that shows products, proof, and current build velocity.", status: "planning", accentColor: "#a7f3d0", launchProgress: 38, ownerUserId: userId, createdAt: "2026-04-12T16:00:00.000Z", updatedAt: ts },
   { id: "room_launch_engine", workspaceId, name: "Launch Engine", slug: "launch-engine", mission: "Reusable operating system for shipping landing pages, content, demos, analytics, and founder launch assets.", status: "active", accentColor: "#f8d77a", launchProgress: 51, ownerUserId: userId, createdAt: "2026-04-14T11:00:00.000Z", updatedAt: ts },
 ];
 const int = (key: Integration["key"], name: string, category: Integration["category"], phase: Integration["phase"], status: Integration["status"], health: Integration["health"], permissionLevel: Integration["permissionLevel"], highRiskActions: Integration["highRiskActions"] = [], errorMessage?: string): Integration => ({ id: `integration_${key}`, key, name, category, phase, status, health, permissionLevel, lastSyncedAt: status === "connected" ? ts : undefined, capabilities: ["activity", "status", "drafts", "sync"], highRiskActions, errorMessage });
@@ -48,7 +48,8 @@ export const mockRoomIntegrations: RoomIntegration[] = mockIntegrations.filter((
 export const mockAgentMemory: AgentMemory[] = [{ id: "memory_fofit_positioning", workspaceId, roomId: "room_fofit", agentId: "agent_product", scope: "room", key: "positioning", value: { statement: "You do not just chat with AI. You manage the work AI is doing." }, source: "founder_brief", createdAt: ts }];
 export const mockAuditLogs: AuditLog[] = [{ id: "audit_approval_seed", workspaceId, actorAgentId: "agent_security", action: "approval_policy_seeded", targetType: "approval_policy", targetId: "high_risk_actions", payload: { highRiskActions: 10 }, createdAt: ts }];
 export const mockDashboardMetrics: DashboardMetric[] = [{ label: "Active rooms", value: "3", detail: "FoFit is the flagship room", trend: "up" }, { label: "Pending approvals", value: "8", detail: "High-risk actions are gated", trend: "flat" }, { label: "Connected tools", value: "7", detail: "Mock sync across phase 1 and 2", trend: "up" }, { label: "FoFit progress", value: "64%", detail: "MVP foundation", trend: "up" }];
-export const getRoomBySlug = (slugOrId: string) => mockRooms.find((r) => r.slug === slugOrId || r.id === slugOrId);
+export const getRoomBySlug = (slugOrId: string) =>
+  mockRooms.find((r) => r.slug === slugOrId || r.id === slugOrId || (r.id === "room_portfolio" && slugOrId === "portfolio"));
 export const getAgent = (id?: string) => mockAgents.find((a) => a.id === id);
 export const getIntegration = (id?: IntegrationId) => mockIntegrations.find((i) => i.id === id);
 export const getRoomTasks = (roomId: RoomId) => mockTasks.filter((t) => t.roomId === roomId);

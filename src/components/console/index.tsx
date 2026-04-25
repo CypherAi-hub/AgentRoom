@@ -104,6 +104,8 @@ export function RoomConsole({ room }: { room: Room }) {
   const [loadingLive, setLoadingLive] = useState(false);
 
   useEffect(() => {
+    if (!hasMounted) return;
+
     let cancelled = false;
 
     async function loadLiveActivity() {
@@ -135,7 +137,7 @@ export function RoomConsole({ room }: { room: Room }) {
     return () => {
       cancelled = true;
     };
-  }, [hydrateLiveActivity, room.id]);
+  }, [hasMounted, hydrateLiveActivity, room.id]);
 
   const combinedActivity = useMemo(
     () =>
