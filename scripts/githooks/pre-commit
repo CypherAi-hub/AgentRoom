@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# Pre-commit guard: refuse to commit any staged content gitleaks flags.
+# Install once per clone with:  git config core.hooksPath scripts/githooks
+
+set -e
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "⚠️  gitleaks not installed — secret scan skipped."
+  echo "   brew install gitleaks   (or skip with: git commit --no-verify)"
+  exit 0
+fi
+
+# Build a tmpdir mirroring just the staged blobs, then dir-scan it.
+# This avoids gitleaks' staged-commit semantics (which require an HTTP-style
+# diff input and miss new-file content).
+TMPDIR="$(mktemp -d)"
+trap 'rm -rf "$TMPDIR"' EXIT
+
+staged_count=0
+while IFS= read -r -d '' file; do
+  case "$file" in
+    .env*|*.pem|*.key|*.crt|secrets/*|*/.env*|node_modules/*|.next/*) continue ;;
+  esac
+  mkdir -p "$TMPDIR/$(dirname "$file")"
+  git show ":$file" > "$TMPDIR/$file" 2>/dev/null || true
+  staged_count=$((staged_count + 1))
+done < <(git diff --cached --name-only -z)
+
+if [[ "$staged_count" -eq 0 ]]; then
+  exit 0
+fi
+
+if ! gitleaks dir --no-banner --redact -v "$TMPDIR" >/dev/null 2>&1; then
+  gitleaks dir --no-banner --redact "$TMPDIR" || true
+  echo
+  echo "❌  Commit blocked: secret detected in staged content."
+  echo "   - Move the secret into .env.local (gitignored)."
+  echo "   - Rerun: git add ... && git commit"
+  echo "   - Or, if this is a false positive: git commit --no-verify"
+  exit 1
+fi
