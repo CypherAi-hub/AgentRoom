@@ -77,7 +77,8 @@ function MessageKindIcon({ kind }: { kind: ConsoleMessageRecord["kind"] }) {
 }
 
 function statusSummary(roomState: RoomRuntimeState) {
-  const counts = mockAgents.reduce<Record<string, number>>((acc, agent) => {
+  const visibleAgents = mockAgents.filter((agent) => roomState.selectedAgentIds.includes(agent.id));
+  const counts = visibleAgents.reduce<Record<string, number>>((acc, agent) => {
     const status = roomState.localAgentStatuses[agent.id] ?? agent.status;
     acc[status] = (acc[status] ?? 0) + 1;
     return acc;
@@ -85,6 +86,10 @@ function statusSummary(roomState: RoomRuntimeState) {
   return Object.entries(counts)
     .map(([status, count]) => count + " " + status.replaceAll("_", " "))
     .join(" / ");
+}
+
+function agentDisplayName(agent: Agent, roomState: RoomRuntimeState) {
+  return roomState.customAgentNames[agent.id] ?? agent.name;
 }
 
 export function RoomConsole({ room }: { room: Room }) {
@@ -148,6 +153,11 @@ export function RoomConsole({ room }: { room: Room }) {
   );
 
   const pendingApprovals = roomState.localApprovals.filter((approval) => approval.status === "pending");
+  const visibleAgents = useMemo(
+    () => mockAgents.filter((agent) => roomState.selectedAgentIds.includes(agent.id)),
+    [roomState.selectedAgentIds],
+  );
+  const selectedAgent = visibleAgents.find((agent) => agent.id === roomState.selectedAgentId) ?? visibleAgents[0] ?? mockAgents[0];
 
   return (
     <div className="flex flex-col gap-5">
@@ -178,13 +188,16 @@ export function RoomConsole({ room }: { room: Room }) {
 
       <div className="grid gap-5 2xl:grid-cols-[minmax(0,1fr)_360px]">
         <AgentDock
+          agents={visibleAgents}
+          roomState={roomState}
           selectedAgentId={roomState.selectedAgentId}
           statuses={roomState.localAgentStatuses}
           onSelect={(agentId) => selectAgent(room.id, agentId)}
         />
         <AgentDetailPanel
-          agent={mockAgents.find((agent) => agent.id === roomState.selectedAgentId) ?? mockAgents[0]}
-          status={roomState.localAgentStatuses[roomState.selectedAgentId ?? "agent_product"]}
+          agent={selectedAgent}
+          roomState={roomState}
+          status={roomState.localAgentStatuses[selectedAgent.id]}
         />
       </div>
 
@@ -199,6 +212,7 @@ export function RoomConsole({ room }: { room: Room }) {
                 </p>
               </div>
               <QuickActions
+                roomName={room.name}
                 onInstruction={(instruction) => submitRoomInstruction(room.id, instruction)}
                 onSimulate={() => simulateAgentWork(room.id)}
               />
@@ -242,10 +256,14 @@ export function DataModeBadge({ mode, ready = true }: { mode: DataMode; ready?: 
 }
 
 export function AgentDock({
+  agents,
+  roomState,
   selectedAgentId,
   statuses,
   onSelect,
 }: {
+  agents: Agent[];
+  roomState: RoomRuntimeState;
   selectedAgentId?: string;
   statuses: Record<string, string>;
   onSelect: (agentId: Agent["id"]) => void;
@@ -258,14 +276,15 @@ export function AgentDock({
             <CardTitle className="text-base">Agent Dock</CardTitle>
             <p className="mt-1 text-sm text-muted-foreground">Local state only. No autonomous external execution.</p>
           </div>
-          <Badge variant="outline">{mockAgents.length} agents</Badge>
+          <Badge variant="outline">{agents.length} agents</Badge>
         </div>
       </CardHeader>
       <CardContent>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {mockAgents.map((agent) => {
+          {agents.map((agent) => {
             const selected = selectedAgentId === agent.id;
             const status = (statuses[agent.id] ?? agent.status) as Agent["status"];
+            const displayName = agentDisplayName(agent, roomState);
             return (
               <button
                 key={agent.id}
@@ -277,9 +296,9 @@ export function AgentDock({
                 )}
               >
                 <div className="flex min-w-0 items-start gap-3">
-                  <Avatar name={agent.name} className="shrink-0" />
+                  <Avatar name={displayName} className="shrink-0" />
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium">{agent.name}</div>
+                    <div className="truncate text-sm font-medium">{displayName}</div>
                     <div className="mt-1 truncate text-xs text-muted-foreground">{agent.role}</div>
                   </div>
                 </div>
@@ -295,15 +314,24 @@ export function AgentDock({
   );
 }
 
-export function AgentDetailPanel({ agent, status }: { agent: Agent; status?: Agent["status"] }) {
+export function AgentDetailPanel({
+  agent,
+  roomState,
+  status,
+}: {
+  agent: Agent;
+  roomState: RoomRuntimeState;
+  status?: Agent["status"];
+}) {
   const tools = agent.integrationIds.map((id) => getIntegration(id)?.name).filter(Boolean);
+  const displayName = agentDisplayName(agent, roomState);
   return (
     <Card className="glass-panel">
       <CardHeader>
         <div className="flex items-start gap-3">
-          <Avatar name={agent.name} />
+          <Avatar name={displayName} />
           <div className="min-w-0 flex-1">
-            <CardTitle className="truncate text-base">{agent.name}</CardTitle>
+            <CardTitle className="truncate text-base">{displayName}</CardTitle>
             <p className="mt-1 text-sm text-muted-foreground">{agent.description}</p>
           </div>
         </div>
@@ -330,19 +358,21 @@ export function AgentDetailPanel({ agent, status }: { agent: Agent; status?: Age
 }
 
 export function QuickActions({
+  roomName,
   onInstruction,
   onSimulate,
 }: {
+  roomName: string;
   onInstruction: (instruction: string) => void;
   onSimulate: () => void;
 }) {
   return (
     <div className="flex flex-wrap gap-2">
-      <Button size="sm" variant="outline" onClick={() => onInstruction("Triage the latest GitHub and Vercel signals for FoFit.")}>
+      <Button size="sm" variant="outline" onClick={() => onInstruction("Triage the latest GitHub and Vercel signals for " + roomName + ".")}>
         <GitBranch className="size-4" />
         Triage
       </Button>
-      <Button size="sm" variant="outline" onClick={() => onInstruction("Prepare a production deploy readiness plan for FoFit.")}>
+      <Button size="sm" variant="outline" onClick={() => onInstruction("Prepare a production deploy readiness plan for " + roomName + ".")}>
         <Rocket className="size-4" />
         Release Plan
       </Button>

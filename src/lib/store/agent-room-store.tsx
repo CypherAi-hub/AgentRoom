@@ -6,7 +6,9 @@ import {
   getRoomEvents,
   getRoomTasks,
   mockAgents,
+  mockIntegrations,
   mockRooms,
+  userId,
   workspaceId,
 } from "@/lib/mock-data";
 import type {
@@ -27,7 +29,8 @@ import type {
   TaskStatus,
 } from "@/types";
 
-const STORAGE_KEY = "agent-room:v0.3:runtime-state";
+const STORAGE_KEY = "agent-room:v0.4:runtime-state";
+const LEGACY_STORAGE_KEY = "agent-room:v0.3:runtime-state";
 const SEED_TIME = "2026-04-24T17:00:00.000Z";
 
 export type ConsoleMessageKind = "user" | "agent" | "tool" | "approval" | "task" | "system";
@@ -60,10 +63,21 @@ export interface RoomRuntimeState {
   liveActivityEvents: ActivityEvent[];
   liveModes: Partial<Record<"github" | "vercel", LiveSourceMode>>;
   selectedAgentId?: AgentId;
+  selectedAgentIds: AgentId[];
+  customAgentNames: Partial<Record<AgentId, string>>;
+  selectedIntegrationIds: IntegrationId[];
+  environmentContext?: {
+    projectType: string;
+    githubRepo?: string;
+    vercelProject?: string;
+    websiteUrl?: string;
+    notes?: string;
+  };
 }
 
 interface AgentRoomRuntimeState {
   rooms: Record<string, RoomRuntimeState>;
+  customRooms: Room[];
 }
 
 interface ConsoleMessageInput {
@@ -106,10 +120,38 @@ interface RiskDetection {
   summary: string;
 }
 
+export interface CreateEnvironmentInput {
+  name: string;
+  mission: string;
+  projectType: string;
+  status: Room["status"];
+  launchProgress: number;
+  githubRepo?: string;
+  vercelProject?: string;
+  websiteUrl?: string;
+  notes?: string;
+  selectedAgentIds: AgentId[];
+  customAgentNames: Partial<Record<AgentId, string>>;
+  selectedIntegrationIds: IntegrationId[];
+}
+
+interface RoomRuntimeOptions {
+  consoleMessages?: ConsoleMessage[];
+  tasks?: Task[];
+  activityEvents?: ActivityEvent[];
+  selectedAgentIds?: AgentId[];
+  customAgentNames?: Partial<Record<AgentId, string>>;
+  selectedIntegrationIds?: IntegrationId[];
+  environmentContext?: RoomRuntimeState["environmentContext"];
+}
+
 interface AgentRoomStoreValue {
   hasMounted: boolean;
+  getRooms: () => Room[];
+  getRoomBySlug: (slugOrId: string) => Room | undefined;
   getRoomState: (roomId: RoomId) => RoomRuntimeState;
   getDataMode: (roomId: RoomId) => DataMode;
+  createEnvironment: (input: CreateEnvironmentInput) => Room;
   createConsoleMessage: (roomId: RoomId, message: ConsoleMessageInput) => void;
   addActivityEvent: (roomId: RoomId, event: ActivityEventInput) => void;
   updateAgentStatus: (roomId: RoomId, agentId: AgentId, status: AgentStatus) => void;
@@ -140,6 +182,36 @@ function toActivityId(value: string) {
 
 function toApprovalId(value: string) {
   return value as Approval["id"];
+}
+
+function toTaskId(value: string) {
+  return value as Task["id"];
+}
+
+function toRoomId(value: string) {
+  return value as Room["id"];
+}
+
+function slugify(value: string) {
+  const slug = value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return slug || "untitled-room";
+}
+
+function uniqueSlug(name: string, rooms: Room[]) {
+  const base = slugify(name);
+  const existing = new Set(rooms.map((room) => room.slug));
+  if (!existing.has(base)) return base;
+  let index = 2;
+  while (existing.has(base + "-" + index)) index += 1;
+  return base + "-" + index;
+}
+
+function roomCatalog(state: AgentRoomRuntimeState) {
+  return [...mockRooms, ...state.customRooms];
 }
 
 function nowIso() {
@@ -244,45 +316,67 @@ function seededMessages(room: Room): ConsoleMessage[] {
   ];
 }
 
-function createRoomRuntime(room: Room): RoomRuntimeState {
+function createRoomRuntime(room: Room, options: RoomRuntimeOptions = {}): RoomRuntimeState {
+  const selectedAgentIds = options.selectedAgentIds?.length
+    ? options.selectedAgentIds
+    : mockAgents.map((agent) => agent.id);
+  const selectedIntegrationIds = options.selectedIntegrationIds?.length
+    ? options.selectedIntegrationIds
+    : mockIntegrations.map((integration) => integration.id);
+  const agentStatuses = seededAgentStatuses();
   return {
     roomId: room.id,
     currentRoomObjective: room.mission,
-    consoleMessages: seededMessages(room),
-    localAgentStatuses: seededAgentStatuses(),
+    consoleMessages: options.consoleMessages ?? seededMessages(room),
+    localAgentStatuses: Object.fromEntries(selectedAgentIds.map((agentId) => [agentId, agentStatuses[agentId] ?? "idle"])),
     localApprovals: getRoomApprovals(room.id),
-    localTasks: getRoomTasks(room.id),
-    localActivityEvents: getRoomEvents(room.id),
+    localTasks: options.tasks ?? getRoomTasks(room.id),
+    localActivityEvents: options.activityEvents ?? getRoomEvents(room.id),
     liveActivityEvents: [],
     liveModes: {},
-    selectedAgentId: "agent_product",
+    selectedAgentId: selectedAgentIds.includes("agent_product") ? "agent_product" : selectedAgentIds[0],
+    selectedAgentIds,
+    customAgentNames: options.customAgentNames ?? {},
+    selectedIntegrationIds,
+    environmentContext: options.environmentContext,
   };
 }
 
 function createInitialState(): AgentRoomRuntimeState {
   return {
+    customRooms: [],
     rooms: Object.fromEntries(mockRooms.map((room) => [room.id, createRoomRuntime(room)])),
   };
 }
 
-function getRoom(roomId: RoomId) {
-  return mockRooms.find((room) => room.id === roomId) ?? mockRooms[0];
+function getRoom(state: AgentRoomRuntimeState, roomId: RoomId) {
+  return roomCatalog(state).find((room) => room.id === roomId) ?? mockRooms[0];
 }
 
 function getRuntime(state: AgentRoomRuntimeState, roomId: RoomId) {
-  return state.rooms[roomId] ?? createRoomRuntime(getRoom(roomId));
+  return state.rooms[roomId] ?? createRoomRuntime(getRoom(state, roomId));
+}
+
+function isSavedRoom(value: unknown): value is Room {
+  return Boolean(value && typeof value === "object" && "id" in value && "slug" in value && "name" in value);
 }
 
 function mergeSavedState(saved: unknown): AgentRoomRuntimeState {
   const initial = createInitialState();
   if (!saved || typeof saved !== "object" || !("rooms" in saved)) return initial;
-  const savedRooms = (saved as { rooms?: Record<string, Partial<RoomRuntimeState>> }).rooms ?? {};
+  const parsed = saved as { rooms?: Record<string, Partial<RoomRuntimeState>>; customRooms?: unknown[] };
+  const savedRooms = parsed.rooms ?? {};
+  const customRooms = (Array.isArray(parsed.customRooms) ? parsed.customRooms : []).filter(isSavedRoom);
   const mergedRooms = { ...initial.rooms };
 
-  for (const room of mockRooms) {
+  for (const room of customRooms) {
+    mergedRooms[room.id] = createRoomRuntime(room);
+  }
+
+  for (const room of [...mockRooms, ...customRooms]) {
     const savedRoom = savedRooms[room.id];
     if (!savedRoom) continue;
-    const initialRoom = mergedRooms[room.id];
+    const initialRoom = mergedRooms[room.id] ?? createRoomRuntime(room);
     mergedRooms[room.id] = {
       ...initialRoom,
       ...savedRoom,
@@ -293,10 +387,14 @@ function mergeSavedState(saved: unknown): AgentRoomRuntimeState {
       localActivityEvents: savedRoom.localActivityEvents?.length ? savedRoom.localActivityEvents : initialRoom.localActivityEvents,
       liveActivityEvents: savedRoom.liveActivityEvents ?? [],
       liveModes: savedRoom.liveModes ?? {},
+      selectedAgentIds: savedRoom.selectedAgentIds?.length ? savedRoom.selectedAgentIds : initialRoom.selectedAgentIds,
+      customAgentNames: savedRoom.customAgentNames ?? initialRoom.customAgentNames,
+      selectedIntegrationIds: savedRoom.selectedIntegrationIds?.length ? savedRoom.selectedIntegrationIds : initialRoom.selectedIntegrationIds,
+      environmentContext: savedRoom.environmentContext ?? initialRoom.environmentContext,
     };
   }
 
-  return { rooms: mergedRooms };
+  return { customRooms, rooms: mergedRooms };
 }
 
 function updateRoomState(
@@ -306,6 +404,7 @@ function updateRoomState(
 ): AgentRoomRuntimeState {
   const current = getRuntime(state, roomId);
   return {
+    ...state,
     rooms: {
       ...state.rooms,
       [roomId]: updater(current),
@@ -379,7 +478,7 @@ export function AgentRoomStoreProvider({ children }: { children: React.ReactNode
   useEffect(() => {
     const restoreTimer = window.setTimeout(() => {
       try {
-        const stored = window.localStorage.getItem(STORAGE_KEY);
+        const stored = window.localStorage.getItem(STORAGE_KEY) ?? window.localStorage.getItem(LEGACY_STORAGE_KEY);
         if (stored) {
           setState(mergeSavedState(JSON.parse(stored)));
         }
@@ -398,8 +497,142 @@ export function AgentRoomStoreProvider({ children }: { children: React.ReactNode
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }, [hasMounted, state]);
 
+  const getRooms = useCallback(() => roomCatalog(state), [state]);
+  const getRoomBySlug = useCallback(
+    (slugOrId: string) => roomCatalog(state).find((room) => room.slug === slugOrId || room.id === slugOrId),
+    [state],
+  );
   const getRoomState = useCallback((roomId: RoomId) => getRuntime(state, roomId), [state]);
   const getDataMode = useCallback((roomId: RoomId) => modeForRoom(getRuntime(state, roomId)), [state]);
+
+  const createEnvironment = useCallback(
+    (input: CreateEnvironmentInput) => {
+      const now = nowIso();
+      const slug = uniqueSlug(input.name, roomCatalog(state));
+      const room: Room = {
+        id: toRoomId(makeId("room")),
+        workspaceId,
+        name: input.name.trim(),
+        slug,
+        mission: input.mission.trim(),
+        status: input.status,
+        accentColor: "#7dd3fc",
+        launchProgress: Math.max(0, Math.min(100, input.launchProgress)),
+        ownerUserId: userId,
+        createdAt: now,
+        updatedAt: now,
+      };
+      const selectedAgentIds: AgentId[] = input.selectedAgentIds.length ? input.selectedAgentIds : ["agent_product", "agent_engineer"];
+      const selectedIntegrationIds = input.selectedIntegrationIds;
+      const primaryAgent = selectedAgentIds[0] ?? "agent_product";
+      const primaryAgentName =
+        input.customAgentNames[primaryAgent] ?? mockAgents.find((agent) => agent.id === primaryAgent)?.name ?? "Agent";
+      const tasks: Task[] = [
+        {
+          id: toTaskId("task_" + slug + "_context"),
+          roomId: room.id,
+          title: "Review room context and mission",
+          description: "Confirm the mission, notes, connected tools, and first useful next action.",
+          status: "next",
+          priority: "high",
+          assignedAgentId: primaryAgent,
+          integrationIds: selectedIntegrationIds,
+          externalLinks: [],
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
+          id: toTaskId("task_" + slug + "_tool_sync"),
+          roomId: room.id,
+          title: "Verify selected tool readiness",
+          description: "Check selected tools in local read-only mode before any real integration work begins.",
+          status: "backlog",
+          priority: "medium",
+          assignedAgentId: selectedAgentIds.includes("agent_deployment") ? "agent_deployment" : primaryAgent,
+          integrationIds: selectedIntegrationIds,
+          externalLinks: [],
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
+          id: toTaskId("task_" + slug + "_approval_policy"),
+          roomId: room.id,
+          title: "Confirm approval gates",
+          description: "Keep risky deploy, billing, data, environment, and external-message actions approval gated.",
+          status: "backlog",
+          priority: "high",
+          assignedAgentId: selectedAgentIds.includes("agent_security") ? "agent_security" : primaryAgent,
+          integrationIds: selectedIntegrationIds,
+          externalLinks: [],
+          createdAt: now,
+          updatedAt: now,
+        },
+      ];
+      const activity = createActivityEvent(room.id, {
+        actorType: "system",
+        eventType: "environment_initialized",
+        title: "Environment initialized",
+        summary: room.name + " was created locally with " + selectedAgentIds.length + " agents and " + selectedIntegrationIds.length + " tools.",
+        riskLevel: "low",
+        payload: {
+          projectType: input.projectType,
+          selectedAgentIds,
+          selectedIntegrationIds,
+          localOnly: true,
+          mutationsDisabled: true,
+        },
+      }, now);
+      const messages: ConsoleMessage[] = [
+        createMessage(room.id, {
+          kind: "system",
+          authorName: "Agent Room",
+          title: room.name + " environment online",
+          body: "This room was created locally. Agents, tools, tasks, and approval gates are ready without external writes.",
+        }, now),
+        createMessage(room.id, {
+          kind: "agent",
+          authorName: primaryAgentName,
+          agentId: primaryAgent,
+          title: "Mission loaded",
+          body: room.mission,
+        }, now),
+        createMessage(room.id, {
+          kind: "agent",
+          authorName: input.customAgentNames.agent_security ?? "Security Agent",
+          agentId: "agent_security",
+          title: "Approval gates active",
+          body: "High-risk actions still require approval before any execution path can run.",
+        }, now),
+      ];
+      const runtime = createRoomRuntime(room, {
+        consoleMessages: messages,
+        tasks,
+        activityEvents: [activity],
+        selectedAgentIds,
+        customAgentNames: input.customAgentNames,
+        selectedIntegrationIds,
+        environmentContext: {
+          projectType: input.projectType,
+          githubRepo: input.githubRepo,
+          vercelProject: input.vercelProject,
+          websiteUrl: input.websiteUrl,
+          notes: input.notes,
+        },
+      });
+
+      setState((current) => ({
+        ...current,
+        customRooms: [...current.customRooms.filter((item) => item.id !== room.id), room],
+        rooms: {
+          ...current.rooms,
+          [room.id]: runtime,
+        },
+      }));
+
+      return room;
+    },
+    [state],
+  );
 
   const createConsoleMessage = useCallback((roomId: RoomId, message: ConsoleMessageInput) => {
     setState((current) =>
@@ -795,8 +1028,11 @@ export function AgentRoomStoreProvider({ children }: { children: React.ReactNode
   const value = useMemo<AgentRoomStoreValue>(
     () => ({
       hasMounted,
+      getRooms,
+      getRoomBySlug,
       getRoomState,
       getDataMode,
+      createEnvironment,
       createConsoleMessage,
       addActivityEvent,
       updateAgentStatus,
@@ -813,7 +1049,10 @@ export function AgentRoomStoreProvider({ children }: { children: React.ReactNode
       hasMounted,
       createApproval,
       createConsoleMessage,
+      createEnvironment,
       getDataMode,
+      getRoomBySlug,
+      getRooms,
       getRoomState,
       hydrateLiveActivity,
       selectAgent,

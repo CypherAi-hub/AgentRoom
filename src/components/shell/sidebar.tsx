@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Activity, Bot, CheckSquare, Gauge, GitBranch, Home, PlugZap, Settings, Workflow } from "lucide-react";
-import { getRoomBySlug } from "@/lib/mock-data";
+import { useAgentRoomStore } from "@/lib/store/agent-room-store";
 import { cn } from "@/lib/utils";
 
 const nav = [
@@ -21,6 +21,7 @@ function roomSlugFromPath(pathname: string) {
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
+  const { getRoomBySlug } = useAgentRoomStore();
   const currentSlug = roomSlugFromPath(pathname);
   const currentRoom = getRoomBySlug(currentSlug);
   const roomSlug = currentRoom?.slug ?? currentSlug;

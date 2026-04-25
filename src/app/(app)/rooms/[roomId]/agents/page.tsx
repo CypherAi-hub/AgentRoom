@@ -1,4 +1,7 @@
-import { AgentCard } from "@/components/cards";
-import { RoomNotFound } from "@/components/rooms/room-not-found";
-import { getRoomBySlug, mockAgents } from "@/lib/mock-data";
-export default async function RoomAgentsPage({ params }: { params: Promise<{ roomId: string }> }) { const { roomId } = await params; const room = getRoomBySlug(roomId); if (!room) return <RoomNotFound />; return <div className="flex flex-col gap-6"><div><p className="text-sm font-medium uppercase tracking-[0.18em] text-muted-foreground">{room.name}</p><h1 className="mt-2 text-3xl font-semibold">Room agents</h1><p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">Agents are scoped by tools, memory, permissions, tasks, and output history.</p></div><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{mockAgents.map((a) => <AgentCard key={a.id} agent={a} />)}</div></div>; }
+import { RoomAgentsResolver } from "@/components/rooms/room-subpage-resolvers";
+
+export default async function RoomAgentsPage({ params }: { params: Promise<{ roomId: string }> }) {
+  const { roomId } = await params;
+
+  return <RoomAgentsResolver roomSlug={roomId} />;
+}
