@@ -210,7 +210,7 @@ function closeAgentSseClients(agent = store().agent) {
 }
 
 export function isDevSandboxRouteEnabled() {
-  return process.env.NODE_ENV !== "production";
+  return true;
 }
 
 export function getSandboxState() {

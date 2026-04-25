@@ -70,7 +70,7 @@ export function Topbar({
 
       <div className="flex shrink-0 items-center gap-2">
         <Link
-          href="/pricing"
+          href={signedIn ? "/billing" : "/pricing"}
           className="hidden h-8 items-center gap-2 rounded-full border px-3 text-xs text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground sm:inline-flex"
         >
           <Tag className="size-3.5" />

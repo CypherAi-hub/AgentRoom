@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bot, CreditCard, Gauge, History, Home, PlugZap, Settings, Tag } from "lucide-react";
+import { Bot, CreditCard, Gauge, History, Home, PlugZap, Settings } from "lucide-react";
 import type { ShellSession } from "@/lib/supabase/session-types";
 import { cn } from "@/lib/utils";
 
@@ -13,7 +13,6 @@ const NAV = [
   { href: "/runs", label: "Runs", icon: History },
   { href: "/integrations", label: "Integrations", icon: PlugZap },
   { href: "/billing", label: "Billing", icon: CreditCard },
-  { href: "/pricing", label: "Pricing", icon: Tag },
   { href: "/settings", label: "Settings", icon: Settings },
 ] as const;
 

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
 import {
   Camera,
@@ -15,6 +16,9 @@ import {
 } from "lucide-react";
 import type { Metadata } from "next";
 import { AgentRoomLogomark } from "@/components/auth/auth-shell";
+import { getAppShellSession } from "@/lib/supabase/app-session";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Pricing | Agent Room",
@@ -364,7 +368,12 @@ function CreditPackCard({ pack }: { pack: CreditPack }) {
   );
 }
 
-export default function PricingPage() {
+export default async function PricingPage() {
+  const session = await getAppShellSession();
+  if (session.user) {
+    redirect("/billing");
+  }
+
   return (
     <main className="min-h-screen w-full" style={PAGE_STYLE}>
       <div className="mx-auto w-full max-w-[1100px] px-5 py-10 md:px-8 md:py-14">
