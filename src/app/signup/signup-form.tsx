@@ -5,7 +5,7 @@ import { signupAction } from "@/app/signup/actions";
 import {
   AuthInput,
   FormError,
-  GithubButton,
+  OAuthButtons,
   OrDivider,
   PrimaryButton,
 } from "@/components/auth/auth-form-fields";
@@ -33,7 +33,7 @@ export function SignupForm({ nextPath, initialError }: { nextPath: string; initi
       </form>
 
       <OrDivider />
-      <GithubButton />
+      <OAuthButtons nextPath={nextPath} />
     </>
   );
 }

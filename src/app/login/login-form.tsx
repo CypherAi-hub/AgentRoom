@@ -5,7 +5,7 @@ import { loginAction } from "@/app/login/actions";
 import {
   AuthInput,
   FormError,
-  GithubButton,
+  OAuthButtons,
   OrDivider,
   PrimaryButton,
 } from "@/components/auth/auth-form-fields";
@@ -32,7 +32,7 @@ export function LoginForm({ nextPath, initialError }: { nextPath: string; initia
       </form>
 
       <OrDivider />
-      <GithubButton />
+      <OAuthButtons nextPath={nextPath} />
     </>
   );
 }
