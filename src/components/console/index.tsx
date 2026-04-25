@@ -89,6 +89,7 @@ function statusSummary(roomState: RoomRuntimeState) {
 
 export function RoomConsole({ room }: { room: Room }) {
   const {
+    hasMounted,
     getRoomState,
     getDataMode,
     hydrateLiveActivity,
@@ -103,6 +104,8 @@ export function RoomConsole({ room }: { room: Room }) {
   const [loadingLive, setLoadingLive] = useState(false);
 
   useEffect(() => {
+    if (!hasMounted) return;
+
     let cancelled = false;
 
     async function loadLiveActivity() {
@@ -134,7 +137,7 @@ export function RoomConsole({ room }: { room: Room }) {
     return () => {
       cancelled = true;
     };
-  }, [hydrateLiveActivity, room.id]);
+  }, [hasMounted, hydrateLiveActivity, room.id]);
 
   const combinedActivity = useMemo(
     () =>
@@ -153,7 +156,7 @@ export function RoomConsole({ room }: { room: Room }) {
           <div className="max-w-4xl">
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <Badge variant={room.status === "active" ? "success" : "secondary"}>{titleCase(room.status)}</Badge>
-              <DataModeBadge mode={dataMode} />
+              <DataModeBadge mode={dataMode} ready={hasMounted} />
               <Badge variant="outline">Read-only mutations disabled</Badge>
             </div>
             <h1 className="text-2xl font-semibold tracking-normal sm:text-3xl">{room.name} Live Console</h1>
@@ -214,6 +217,7 @@ export function RoomConsole({ room }: { room: Room }) {
         <ContextRail
           roomState={roomState}
           dataMode={dataMode}
+          modeReady={hasMounted}
           loadingLive={loadingLive}
           activity={combinedActivity}
           pendingApprovals={pendingApprovals}
@@ -225,11 +229,14 @@ export function RoomConsole({ room }: { room: Room }) {
   );
 }
 
-export function DataModeBadge({ mode }: { mode: DataMode }) {
+export function DataModeBadge({ mode, ready = true }: { mode: DataMode; ready?: boolean }) {
+  const label = ready ? modeLabel(mode) : "Checking Mode";
+  const variant = ready ? modeVariant(mode) : ("secondary" as const);
+
   return (
-    <Badge variant={modeVariant(mode)} className="gap-1.5">
+    <Badge variant={variant} className="gap-1.5">
       <span className="size-1.5 rounded-full bg-current" />
-      {modeLabel(mode)}
+      {label}
     </Badge>
   );
 }
@@ -448,6 +455,7 @@ export function ConsoleInput({ onSubmit }: { onSubmit: (instruction: string) => 
 export function ContextRail({
   roomState,
   dataMode,
+  modeReady,
   loadingLive,
   activity,
   pendingApprovals,
@@ -456,6 +464,7 @@ export function ContextRail({
 }: {
   roomState: RoomRuntimeState;
   dataMode: DataMode;
+  modeReady: boolean;
   loadingLive: boolean;
   activity: ActivityEvent[];
   pendingApprovals: Approval[];
@@ -468,7 +477,7 @@ export function ContextRail({
         <CardHeader>
           <div className="flex items-center justify-between gap-3">
             <CardTitle className="text-base">Live Context</CardTitle>
-            <DataModeBadge mode={dataMode} />
+            <DataModeBadge mode={dataMode} ready={modeReady} />
           </div>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
