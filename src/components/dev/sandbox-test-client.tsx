@@ -110,6 +110,18 @@ type PaywallState = {
 
 type PayloadRecord = Record<string, unknown>;
 
+const EXAMPLE_PROMPTS = [
+  "Take a screenshot of the desktop",
+  "Open Firefox and go to news.ycombinator.com",
+  "Open a terminal and run 'ls -la'",
+  "Search for 'climate change' in DuckDuckGo",
+] as const;
+
+const TEXTAREA_MIN_ROWS = 3;
+const TEXTAREA_MAX_ROWS = 8;
+const TEXTAREA_LINE_HEIGHT_PX = 24;
+const TEXTAREA_VERTICAL_PADDING_PX = 16;
+
 const initialAgentState: AgentState = {
   status: "idle",
   taskPrompt: null,
@@ -299,6 +311,15 @@ export function SandboxTestClient() {
   const [expandedScreenshots, setExpandedScreenshots] = useState<Set<string>>(new Set());
   const [expandedJsonRows, setExpandedJsonRows] = useState<Set<string>>(new Set());
   const activityRef = useRef<HTMLDivElement>(null);
+  const promptRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const node = promptRef.current;
+    if (!node) return;
+    node.style.height = "auto";
+    const maxHeightPx = TEXTAREA_LINE_HEIGHT_PX * TEXTAREA_MAX_ROWS + TEXTAREA_VERTICAL_PADDING_PX;
+    node.style.height = `${Math.min(node.scrollHeight, maxHeightPx)}px`;
+  }, [taskPrompt]);
 
   const applyBillingBody = useCallback((body: unknown) => {
     const nextProfile = profileFromApiBody(body);
@@ -430,6 +451,28 @@ export function SandboxTestClient() {
       setBusy(null);
       refreshState().catch(() => {});
     }
+  }
+
+  function startNewRun() {
+    setTaskPrompt("");
+    setAgentLogs([]);
+    setExpandedScreenshots(new Set());
+    setExpandedJsonRows(new Set());
+    setState((current) => ({
+      ...current,
+      agent: {
+        ...current.agent,
+        status: "idle",
+        logs: [],
+        iterationCount: 0,
+        runtimeMs: 0,
+        startedAt: null,
+        endedAt: null,
+        lastError: null,
+        abortFlag: false,
+      },
+    }));
+    promptRef.current?.focus();
   }
 
   async function startAgent() {
@@ -687,23 +730,77 @@ export function SandboxTestClient() {
             </Panel>
 
             <Panel title="Task for the agent">
-              <textarea
-                className="min-h-28 w-full resize-none rounded-md border border-white/10 bg-black/25 px-3 py-2 text-sm leading-6 text-foreground outline-none transition placeholder:text-muted-foreground focus:border-emerald-300/35"
-                onChange={(event) => setTaskPrompt(event.target.value)}
-                placeholder="e.g. Take a screenshot of the desktop"
-                value={taskPrompt}
-              />
-              <p className="mt-2 text-xs leading-5 text-muted-foreground">Keep tasks simple. No logins, secrets, deletes, or external accounts.</p>
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <button className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-emerald-300/35 bg-emerald-300/10 px-3 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-300/15 disabled:cursor-not-allowed disabled:opacity-45" disabled={!canStartAgent} onClick={startAgent} type="button">
-                  {busy === "agent" && state.agent.status !== "running" ? <Loader2 className="size-4 animate-spin" /> : <MousePointer2 className="size-4" />}
-                  Start Agent
-                </button>
-                <button className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-amber-300/35 bg-amber-300/10 px-3 text-sm font-semibold text-amber-100 transition hover:bg-amber-300/15 disabled:cursor-not-allowed disabled:opacity-45" disabled={!canStopAgent} onClick={stopAgent} type="button">
-                  <CircleStop className="size-4" />
-                  Stop Agent
-                </button>
-              </div>
+              {(() => {
+                const agentRunning = state.agent.status === "running";
+                const agentFinished =
+                  state.agent.status === "done" ||
+                  state.agent.status === "stopped" ||
+                  state.agent.status === "error";
+
+                return (
+                  <>
+                    <textarea
+                      ref={promptRef}
+                      className="w-full resize-none overflow-y-auto rounded-md border border-white/10 bg-black/25 px-3 py-2 text-sm leading-6 text-foreground outline-none transition placeholder:text-muted-foreground focus:border-emerald-300/35 disabled:cursor-not-allowed disabled:opacity-60"
+                      onChange={(event) => setTaskPrompt(event.target.value)}
+                      placeholder="Tell the agent what to do. Be specific. Example: 'Open Firefox, navigate to github.com, search for typescript repos sorted by stars.'"
+                      value={taskPrompt}
+                      rows={TEXTAREA_MIN_ROWS}
+                      disabled={agentRunning}
+                    />
+
+                    {!agentRunning && !agentFinished ? (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {EXAMPLE_PROMPTS.map((prompt) => (
+                          <button
+                            key={prompt}
+                            type="button"
+                            onClick={() => setTaskPrompt(prompt)}
+                            className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-muted-foreground transition hover:border-emerald-300/35 hover:bg-emerald-300/10 hover:text-emerald-100"
+                          >
+                            {prompt}
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+
+                    <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                      Keep tasks simple. No logins, secrets, deletes, or external accounts.
+                    </p>
+
+                    {agentFinished ? (
+                      <button
+                        className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-md border border-emerald-300/35 bg-emerald-300/10 px-3 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-300/15"
+                        onClick={startNewRun}
+                        type="button"
+                      >
+                        <RefreshCw className="size-4" />
+                        Start a new run
+                      </button>
+                    ) : agentRunning ? (
+                      <button
+                        className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-md border border-red-400/40 bg-red-500/10 px-3 text-sm font-semibold text-red-200 transition hover:bg-red-500/15 disabled:cursor-not-allowed disabled:opacity-45"
+                        disabled={!canStopAgent}
+                        onClick={stopAgent}
+                        type="button"
+                      >
+                        {busy === "agent" ? <Loader2 className="size-4 animate-spin" /> : <CircleStop className="size-4" />}
+                        Stop run
+                      </button>
+                    ) : (
+                      <button
+                        className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-md border border-emerald-300/35 bg-emerald-300/10 px-3 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-300/15 disabled:cursor-not-allowed disabled:opacity-45"
+                        disabled={!canStartAgent}
+                        onClick={startAgent}
+                        type="button"
+                      >
+                        {busy === "agent" ? <Loader2 className="size-4 animate-spin" /> : <MousePointer2 className="size-4" />}
+                        Start Agent
+                      </button>
+                    )}
+                  </>
+                );
+              })()}
             </Panel>
 
             <Panel title="Environment">
