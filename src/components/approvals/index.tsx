@@ -13,6 +13,20 @@ export function RoomApprovalsList({ roomId }: { roomId: RoomId }) {
   const { getRoomState, updateApprovalStatus } = useAgentRoomStore();
   const roomState = getRoomState(roomId);
 
+  if (!roomState.localApprovals.length) {
+    return (
+      <Card className="border-dashed bg-card/45">
+        <CardContent className="p-8 text-center">
+          <h2 className="text-base font-semibold">No approvals pending</h2>
+          <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
+            Risky deploy, merge, billing, data, environment, and external-message actions will appear here before
+            anything can execute.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <div className="grid gap-4 xl:grid-cols-2">
       {roomState.localApprovals.map((approval) => (
