@@ -4,6 +4,7 @@ node_modules/
 .env.*
 !.env.example
 .next/
+supabase/.temp/
 out/
 build/
 .agent-feed/screenshots/*
