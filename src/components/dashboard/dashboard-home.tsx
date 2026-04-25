@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { ActivityFeed } from "@/components/activity";
+import { Badge } from "@/components/ui/primitives";
 import { ApprovalCard } from "@/components/approvals";
 import { AgentCard, IntegrationCard, MetricCard, RoomCard } from "@/components/cards";
-import { mockActivityEvents, mockAgents, mockApprovals, mockDashboardMetrics, mockIntegrations } from "@/lib/mock-data";
+import { getAgent, mockActivityEvents, mockAgentRuns, mockAgents, mockApprovals, mockDashboardMetrics, mockIntegrations } from "@/lib/mock-data";
 import { useAgentRoomStore } from "@/lib/store/agent-room-store";
 
 const createLinkClass =
@@ -58,6 +59,23 @@ export function DashboardHome() {
               <Link href="/rooms/fofit/approvals" className="text-sm text-muted-foreground hover:text-foreground">Review</Link>
             </div>
             <div className="flex flex-col gap-3">{mockApprovals.slice(0, 2).map((a) => <ApprovalCard key={a.id} approval={a} />)}</div>
+          </div>
+          <div>
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Recent runs</h2>
+              <Link href="/runs" className="text-sm text-muted-foreground hover:text-foreground">View runs</Link>
+            </div>
+            <div className="flex flex-col gap-3">
+              {mockAgentRuns.slice(0, 3).map((run) => (
+                <div key={run.id} className="rounded-lg border bg-card/70 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="line-clamp-1 text-sm font-medium">{run.command}</p>
+                    <Badge variant={run.status === "completed" ? "success" : run.status === "running" ? "warning" : "secondary"}>{run.status.replaceAll("_", " ")}</Badge>
+                  </div>
+                  <p className="mt-2 text-xs text-muted-foreground">{getAgent(run.agentId)?.name ?? "Agent"}</p>
+                </div>
+              ))}
+            </div>
           </div>
           <div>
             <h2 className="mb-3 text-lg font-semibold">Recent activity</h2>

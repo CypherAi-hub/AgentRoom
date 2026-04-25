@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, Bot, CheckSquare, Gauge, GitBranch, Home, PlugZap, Settings, Workflow } from "lucide-react";
+import { Activity, Bot, CheckSquare, Gauge, GitBranch, Home, PlayCircle, PlugZap, Settings, Workflow } from "lucide-react";
 import { useAgentRoomStore } from "@/lib/store/agent-room-store";
 import { cn } from "@/lib/utils";
 
@@ -10,6 +10,7 @@ const nav = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
   { href: "/rooms", label: "Rooms", icon: Gauge },
   { href: "/agents", label: "Agents", icon: Bot },
+  { href: "/runs", label: "Runs", icon: PlayCircle },
   { href: "/integrations", label: "Integrations", icon: PlugZap },
   { href: "/settings", label: "Settings", icon: Settings },
 ];

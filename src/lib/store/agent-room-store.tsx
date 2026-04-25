@@ -4,7 +4,10 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import {
   getRoomApprovals,
   getRoomEvents,
+  getRoomRuns,
   getRoomTasks,
+  getRunLogs,
+  getRunToolCalls,
   mockAgents,
   mockIntegrations,
   mockRooms,
@@ -16,6 +19,8 @@ import type {
   ActivityEvent,
   ActorType,
   AgentId,
+  AgentRun,
+  AgentRunId,
   AgentStatus,
   Approval,
   ApprovalId,
@@ -24,13 +29,15 @@ import type {
   RiskLevel,
   Room,
   RoomId,
+  RunLog,
   Task,
   TaskId,
   TaskStatus,
+  ToolCall,
 } from "@/types";
 
-const STORAGE_KEY = "agent-room:v0.4:runtime-state";
-const LEGACY_STORAGE_KEY = "agent-room:v0.3:runtime-state";
+const STORAGE_KEY = "agent-room:v0.6:runtime-state";
+const LEGACY_STORAGE_KEYS = ["agent-room:v0.4:runtime-state", "agent-room:v0.3:runtime-state"] as const;
 const SEED_TIME = "2026-04-24T17:00:00.000Z";
 
 export type ConsoleMessageKind = "user" | "agent" | "tool" | "approval" | "task" | "system";
@@ -60,6 +67,9 @@ export interface RoomRuntimeState {
   localApprovals: Approval[];
   localTasks: Task[];
   localActivityEvents: ActivityEvent[];
+  localAgentRuns: AgentRun[];
+  localRunLogs: RunLog[];
+  localToolCalls: ToolCall[];
   liveActivityEvents: ActivityEvent[];
   liveModes: Partial<Record<"github" | "vercel", LiveSourceMode>>;
   selectedAgentId?: AgentId;
@@ -151,6 +161,9 @@ interface AgentRoomStoreValue {
   getRoomBySlug: (slugOrId: string) => Room | undefined;
   getRoomState: (roomId: RoomId) => RoomRuntimeState;
   getDataMode: (roomId: RoomId) => DataMode;
+  getRoomRuns: (roomId: RoomId) => AgentRun[];
+  getRunLogs: (runId: AgentRunId) => RunLog[];
+  getRunToolCalls: (runId: AgentRunId) => ToolCall[];
   createEnvironment: (input: CreateEnvironmentInput) => Room;
   createConsoleMessage: (roomId: RoomId, message: ConsoleMessageInput) => void;
   addActivityEvent: (roomId: RoomId, event: ActivityEventInput) => void;
@@ -165,6 +178,7 @@ interface AgentRoomStoreValue {
   ) => void;
   simulateAgentWork: (roomId: RoomId) => void;
   submitRoomInstruction: (roomId: RoomId, instruction: string) => void;
+  startAgentRun: (roomId: RoomId, command: string, agentId?: AgentId) => AgentRunId | undefined;
   selectAgent: (roomId: RoomId, agentId: AgentId) => void;
 }
 
@@ -186,6 +200,18 @@ function toApprovalId(value: string) {
 
 function toTaskId(value: string) {
   return value as Task["id"];
+}
+
+function toAgentRunId(value: string) {
+  return value as AgentRunId;
+}
+
+function toRunLogId(value: string) {
+  return value as RunLog["id"];
+}
+
+function toToolCallId(value: string) {
+  return value as ToolCall["id"];
 }
 
 function toRoomId(value: string) {
@@ -233,6 +259,52 @@ function createMessage(roomId: RoomId, input: ConsoleMessageInput, createdAt = n
     roomId,
     createdAt,
     ...input,
+  };
+}
+
+function createAgentRun(roomId: RoomId, command: string, agentId: AgentId, taskId?: TaskId, createdAt = nowIso()): AgentRun {
+  return {
+    id: toAgentRunId(makeId("run_local")),
+    workspaceId,
+    roomId,
+    agentId,
+    taskId,
+    status: "running",
+    command,
+    input: { command, localOnly: true, mutationsDisabled: true },
+    output: "",
+    startedAt: createdAt,
+    createdAt,
+    updatedAt: createdAt,
+  };
+}
+
+function createRunLog(runId: AgentRunId, message: string, level: RunLog["level"] = "info", createdAt = nowIso(), metadata: Record<string, unknown> = {}): RunLog {
+  return {
+    id: toRunLogId(makeId("run_log_local")),
+    workspaceId,
+    runId,
+    level,
+    message,
+    metadata: { localOnly: true, mutationsDisabled: true, ...metadata },
+    createdAt,
+  };
+}
+
+function createToolCall(runId: AgentRunId, integrationId: IntegrationId, callName: string, createdAt = nowIso()): ToolCall {
+  return {
+    id: toToolCallId(makeId("tool_call_local")),
+    workspaceId,
+    runId,
+    integrationId,
+    callName,
+    status: "succeeded",
+    input: { mode: "read_only" },
+    output: { mutationsDisabled: true, persisted: "localStorage" },
+    startedAt: createdAt,
+    completedAt: createdAt,
+    createdAt,
+    updatedAt: createdAt,
   };
 }
 
@@ -332,6 +404,9 @@ function createRoomRuntime(room: Room, options: RoomRuntimeOptions = {}): RoomRu
     localApprovals: getRoomApprovals(room.id),
     localTasks: options.tasks ?? getRoomTasks(room.id),
     localActivityEvents: options.activityEvents ?? getRoomEvents(room.id),
+    localAgentRuns: getRoomRuns(room.id),
+    localRunLogs: getRoomRuns(room.id).flatMap((run) => getRunLogs(run.id)),
+    localToolCalls: getRoomRuns(room.id).flatMap((run) => getRunToolCalls(run.id)),
     liveActivityEvents: [],
     liveModes: {},
     selectedAgentId: selectedAgentIds.includes("agent_product") ? "agent_product" : selectedAgentIds[0],
@@ -385,6 +460,9 @@ function mergeSavedState(saved: unknown): AgentRoomRuntimeState {
       localApprovals: savedRoom.localApprovals?.length ? savedRoom.localApprovals : initialRoom.localApprovals,
       localTasks: savedRoom.localTasks?.length ? savedRoom.localTasks : initialRoom.localTasks,
       localActivityEvents: savedRoom.localActivityEvents?.length ? savedRoom.localActivityEvents : initialRoom.localActivityEvents,
+      localAgentRuns: savedRoom.localAgentRuns?.length ? savedRoom.localAgentRuns : initialRoom.localAgentRuns,
+      localRunLogs: savedRoom.localRunLogs?.length ? savedRoom.localRunLogs : initialRoom.localRunLogs,
+      localToolCalls: savedRoom.localToolCalls?.length ? savedRoom.localToolCalls : initialRoom.localToolCalls,
       liveActivityEvents: savedRoom.liveActivityEvents ?? [],
       liveModes: savedRoom.liveModes ?? {},
       selectedAgentIds: savedRoom.selectedAgentIds?.length ? savedRoom.selectedAgentIds : initialRoom.selectedAgentIds,
@@ -478,7 +556,7 @@ export function AgentRoomStoreProvider({ children }: { children: React.ReactNode
   useEffect(() => {
     const restoreTimer = window.setTimeout(() => {
       try {
-        const stored = window.localStorage.getItem(STORAGE_KEY) ?? window.localStorage.getItem(LEGACY_STORAGE_KEY);
+        const stored = window.localStorage.getItem(STORAGE_KEY) ?? LEGACY_STORAGE_KEYS.map((key) => window.localStorage.getItem(key)).find(Boolean);
         if (stored) {
           setState(mergeSavedState(JSON.parse(stored)));
         }
@@ -504,6 +582,15 @@ export function AgentRoomStoreProvider({ children }: { children: React.ReactNode
   );
   const getRoomState = useCallback((roomId: RoomId) => getRuntime(state, roomId), [state]);
   const getDataMode = useCallback((roomId: RoomId) => modeForRoom(getRuntime(state, roomId)), [state]);
+  const getRoomRunsForStore = useCallback((roomId: RoomId) => getRuntime(state, roomId).localAgentRuns, [state]);
+  const getRunLogsForStore = useCallback((runId: AgentRunId) => {
+    const roomState = Object.values(state.rooms).find((runtime) => runtime.localAgentRuns.some((run) => run.id === runId));
+    return roomState?.localRunLogs.filter((log) => log.runId === runId).sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt)) ?? [];
+  }, [state]);
+  const getRunToolCallsForStore = useCallback((runId: AgentRunId) => {
+    const roomState = Object.values(state.rooms).find((runtime) => runtime.localAgentRuns.some((run) => run.id === runId));
+    return roomState?.localToolCalls.filter((call) => call.runId === runId).sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt)) ?? [];
+  }, [state]);
 
   const createEnvironment = useCallback(
     (input: CreateEnvironmentInput) => {
@@ -882,6 +969,24 @@ export function AgentRoomStoreProvider({ children }: { children: React.ReactNode
         const githubEvent = latestEvent(roomState, "integration_github");
         const vercelEvent = latestEvent(roomState, "integration_vercel");
         const nextTask = roomState.localTasks.find((task) => task.status !== "done");
+        const localRun = createAgentRun(roomId, trimmed, risk ? "agent_security" : "agent_engineer", nextTask?.id, now);
+        const runLogs = [
+          createRunLog(localRun.id, "Command accepted and converted into a local Agent Room run.", "info", now, { roomId }),
+          createRunLog(localRun.id, risk ? "High-risk language detected; approval gate opened before execution." : "No high-risk language detected; run remains in planning/read-only mode.", risk ? "warn" : "info", now, { riskLevel: risk?.riskLevel ?? "low" }),
+          createRunLog(localRun.id, "External writes are disabled. Tool activity is read-only or local-only.", "info", now),
+        ];
+        const toolCalls = [
+          createToolCall(localRun.id, risk?.integrationId ?? "integration_github", risk ? "approval_gate" : "read_context", now),
+        ];
+        const completedRun: AgentRun = {
+          ...localRun,
+          status: risk ? "blocked" : "completed",
+          output: risk
+            ? "Run is blocked until approval. No external mutation was executed."
+            : "Run completed locally with task movement, read-only context review, and console output.",
+          completedAt: now,
+          updatedAt: now,
+        };
         const approval = risk
           ? createApprovalRecord(roomId, {
               requestedByAgentId: "agent_security",
@@ -1009,11 +1114,55 @@ export function AgentRoomStoreProvider({ children }: { children: React.ReactNode
           },
           localApprovals: approval ? [approval, ...roomState.localApprovals] : roomState.localApprovals,
           localTasks: updatedTasks,
+          localAgentRuns: [completedRun, ...roomState.localAgentRuns].slice(0, 40),
+          localRunLogs: [...roomState.localRunLogs, ...runLogs].slice(-160),
+          localToolCalls: [...roomState.localToolCalls, ...toolCalls].slice(-80),
           localActivityEvents: sortEvents([...activityEvents, ...roomState.localActivityEvents]).slice(0, 80),
           consoleMessages: [...roomState.consoleMessages, ...messages].slice(-80),
         };
       }),
     );
+  }, []);
+
+  const startAgentRun = useCallback((roomId: RoomId, command: string, agentId: AgentId = "agent_engineer") => {
+    const trimmed = command.trim();
+    if (!trimmed) return undefined;
+    const runId = toAgentRunId(makeId("run_local"));
+    setState((current) =>
+      updateRoomState(current, roomId, (roomState) => {
+        const now = nowIso();
+        const nextTask = roomState.localTasks.find((task) => task.status !== "done");
+        const run: AgentRun = {
+          id: runId,
+          workspaceId,
+          roomId,
+          agentId,
+          taskId: nextTask?.id,
+          status: "completed",
+          command: trimmed,
+          input: { command: trimmed, localOnly: true, mutationsDisabled: true },
+          output: "Run recorded locally. Supabase persistence is schema-ready but not required for startup yet.",
+          startedAt: now,
+          completedAt: now,
+          createdAt: now,
+          updatedAt: now,
+        };
+        return {
+          ...roomState,
+          localAgentRuns: [run, ...roomState.localAgentRuns].slice(0, 40),
+          localRunLogs: [
+            ...roomState.localRunLogs,
+            createRunLog(run.id, "Run started from the V0.6 runs surface.", "info", now),
+            createRunLog(run.id, "Run completed locally with no external writes.", "info", now),
+          ].slice(-160),
+          localToolCalls: [
+            ...roomState.localToolCalls,
+            createToolCall(run.id, "integration_local_agent_feed", "record_local_run", now),
+          ].slice(-80),
+        };
+      }),
+    );
+    return runId;
   }, []);
 
   const selectAgent = useCallback((roomId: RoomId, agentId: AgentId) => {
@@ -1032,6 +1181,9 @@ export function AgentRoomStoreProvider({ children }: { children: React.ReactNode
       getRoomBySlug,
       getRoomState,
       getDataMode,
+      getRoomRuns: getRoomRunsForStore,
+      getRunLogs: getRunLogsForStore,
+      getRunToolCalls: getRunToolCallsForStore,
       createEnvironment,
       createConsoleMessage,
       addActivityEvent,
@@ -1042,6 +1194,7 @@ export function AgentRoomStoreProvider({ children }: { children: React.ReactNode
       hydrateLiveActivity,
       simulateAgentWork,
       submitRoomInstruction,
+      startAgentRun,
       selectAgent,
     }),
     [
@@ -1053,10 +1206,14 @@ export function AgentRoomStoreProvider({ children }: { children: React.ReactNode
       getDataMode,
       getRoomBySlug,
       getRooms,
+      getRoomRunsForStore,
       getRoomState,
+      getRunLogsForStore,
+      getRunToolCallsForStore,
       hydrateLiveActivity,
       selectAgent,
       simulateAgentWork,
+      startAgentRun,
       submitRoomInstruction,
       updateAgentStatus,
       updateApprovalStatus,
