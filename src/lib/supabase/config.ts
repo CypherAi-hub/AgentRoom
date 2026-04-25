@@ -1,4 +1,4 @@
-export const DEFAULT_AUTH_REDIRECT_PATH = "/dev/sandbox-test";
+export const DEFAULT_AUTH_REDIRECT_PATH = "/dashboard";
 
 export function getSupabaseConfig() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();

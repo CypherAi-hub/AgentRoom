@@ -15,8 +15,10 @@ import {
   setAgentStatus,
   type DevDesktopSandbox,
 } from "@/lib/dev/e2b-sandbox-store";
+import { insertUsageLogAdmin } from "@/lib/data/usage-logs";
+import { updateRunAdmin } from "@/lib/data/runs";
 
-const DEFAULT_MODEL = "claude-sonnet-4-5-20250929";
+const DEFAULT_MODEL = "claude-sonnet-4-6";
 const COMPUTER_USE_BETA = "computer-use-2025-01-24";
 const DISPLAY_WIDTH = 1024;
 const DISPLAY_HEIGHT = 720;
@@ -145,7 +147,21 @@ async function moveIfCoordinate(sandbox: DevDesktopSandbox, input: ComputerInput
   return coordinate;
 }
 
-async function dispatchComputerAction(sandbox: DevDesktopSandbox, toolUse: BetaToolUseBlock): Promise<DispatchResult> {
+type RunContext = {
+  userId: string;
+  runId: string;
+};
+
+function logUsage(ctx: RunContext | null, type: "agent_step" | "screenshot", credits: number) {
+  if (!ctx) return;
+  insertUsageLogAdmin(ctx.userId, { runId: ctx.runId, type, creditsUsed: credits }).catch(() => {});
+}
+
+async function dispatchComputerAction(
+  sandbox: DevDesktopSandbox,
+  toolUse: BetaToolUseBlock,
+  ctx: RunContext | null,
+): Promise<DispatchResult> {
   const input = asComputerInput(toolUse.input);
   const action = asAction(input);
 
@@ -164,6 +180,7 @@ async function dispatchComputerAction(sandbox: DevDesktopSandbox, toolUse: BetaT
           },
         });
         appendAgentLog({ type: "tool_result", payload: { tool_use_id: toolUse.id, action, ok: true } });
+        logUsage(ctx, "screenshot", 0);
 
         return {
           block: resultBlock(toolUse.id, [
@@ -296,33 +313,48 @@ async function dispatchComputerAction(sandbox: DevDesktopSandbox, toolUse: BetaT
   }
 }
 
-function finishStopped() {
+async function persistRunStatus(
+  ctx: RunContext | null,
+  patch: Parameters<typeof updateRunAdmin>[2],
+) {
+  if (!ctx) return;
+  try {
+    await updateRunAdmin(ctx.userId, ctx.runId, patch);
+  } catch {
+    // RLS or env issues should not crash the loop.
+  }
+}
+
+function finishStopped(ctx: RunContext | null) {
   if (getAgentState().status === "stopped") return;
   setAgentStatus("stopped");
   appendAgentLog({ type: "stopped", payload: { message: "Agent stopped." } });
+  void persistRunStatus(ctx, { status: "stopped", endedAt: new Date().toISOString() });
 }
 
-function finishDone(message = "Agent finished.") {
+function finishDone(ctx: RunContext | null, message = "Agent finished.") {
   setAgentStatus("done");
   appendAgentLog({ type: "done", payload: { message } });
+  void persistRunStatus(ctx, { status: "completed", endedAt: new Date().toISOString() });
 }
 
-function finishError(error: unknown) {
+function finishError(ctx: RunContext | null, error: unknown) {
   const message = messageFromError(error);
   setAgentStatus("error", message);
   appendAgentLog({ type: "error", payload: { message } });
+  void persistRunStatus(ctx, { status: "error", endedAt: new Date().toISOString(), errorMessage: message });
 }
 
-export async function runAgentLoop(taskPrompt: string) {
+export async function runAgentLoop(taskPrompt: string, ctx: RunContext | null = null) {
   const sandbox = getActiveSandbox();
 
   if (!sandbox) {
-    finishError("No active sandbox is available for the agent.");
+    finishError(ctx, "No active sandbox is available for the agent.");
     return;
   }
 
   if (!process.env.ANTHROPIC_API_KEY) {
-    finishError("Missing ANTHROPIC_API_KEY. Add it to .env.local or the shell running npm run dev.");
+    finishError(ctx, "Missing ANTHROPIC_API_KEY. Add it to .env.local or the shell running npm run dev.");
     return;
   }
 
@@ -335,19 +367,19 @@ export async function runAgentLoop(taskPrompt: string) {
       const agent = getAgentState();
 
       if (agent.abortFlag) {
-        finishStopped();
+        finishStopped(ctx);
         return;
       }
 
       if (agent.startedAt && Date.now() - agent.startedAt > agent.maxRuntimeMs) {
         appendAgentLog({ type: "max_runtime_reached", payload: { maxRuntimeMs: agent.maxRuntimeMs } });
-        finishDone("Agent stopped at the max runtime safety cap.");
+        finishDone(ctx, "Agent stopped at the max runtime safety cap.");
         return;
       }
 
       if (agent.iterationCount >= agent.maxIterations) {
         appendAgentLog({ type: "max_iterations_reached", payload: { maxIterations: agent.maxIterations } });
-        finishDone("Agent stopped at the max iteration safety cap.");
+        finishDone(ctx, "Agent stopped at the max iteration safety cap.");
         return;
       }
 
@@ -372,7 +404,7 @@ export async function runAgentLoop(taskPrompt: string) {
       });
 
       if (!isAgentRunning() || getAgentState().abortFlag) {
-        finishStopped();
+        finishStopped(ctx);
         return;
       }
 
@@ -392,7 +424,7 @@ export async function runAgentLoop(taskPrompt: string) {
       const uses = toolUseBlocks(responseContent);
 
       if (!uses.length) {
-        finishDone();
+        finishDone(ctx);
         return;
       }
 
@@ -400,7 +432,7 @@ export async function runAgentLoop(taskPrompt: string) {
 
       for (const toolUse of uses) {
         if (getAgentState().abortFlag) {
-          finishStopped();
+          finishStopped(ctx);
           return;
         }
 
@@ -421,7 +453,8 @@ export async function runAgentLoop(taskPrompt: string) {
           continue;
         }
 
-        const result = await dispatchComputerAction(sandbox, toolUse);
+        const result = await dispatchComputerAction(sandbox, toolUse, ctx);
+        if (action !== "screenshot") logUsage(ctx, "agent_step", 0);
         toolResults.push(result.block);
       }
 
@@ -429,9 +462,9 @@ export async function runAgentLoop(taskPrompt: string) {
     }
 
     if (getAgentState().abortFlag) {
-      finishStopped();
+      finishStopped(ctx);
     }
   } catch (error) {
-    finishError(error);
+    finishError(ctx, error);
   }
 }

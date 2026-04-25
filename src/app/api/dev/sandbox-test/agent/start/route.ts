@@ -19,6 +19,9 @@ import {
   resetAgentState,
   startAgentState,
 } from "@/lib/dev/e2b-sandbox-store";
+import { createRunAdmin } from "@/lib/data/runs";
+import { insertUsageLogAdmin } from "@/lib/data/usage-logs";
+import { ensureUserHasRoom } from "@/lib/data/rooms";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -123,6 +126,25 @@ export async function POST(request: NextRequest) {
 
   const agentLimits = getAgentRunLimits(charged.profile.plan);
 
+  let runId: string | null = null;
+  try {
+    const room = await ensureUserHasRoom(charged.profile.id);
+    const created = await createRunAdmin(charged.profile.id, {
+      taskPrompt,
+      roomId: room.id,
+      sandboxId: sandboxState.sandboxId || null,
+      streamUrl: sandboxState.streamUrl || null,
+    });
+    runId = created.id;
+    await insertUsageLogAdmin(charged.profile.id, {
+      runId,
+      type: "sandbox_start",
+      creditsUsed: AGENT_RUN_CREDIT_COST,
+    });
+  } catch {
+    // Persistence failure should not block the live agent run.
+  }
+
   resetAgentState();
   startAgentState(
     taskPrompt,
@@ -133,16 +155,18 @@ export async function POST(request: NextRequest) {
     type: "agent_started",
     payload: {
       taskPrompt,
-      model: process.env.ANTHROPIC_MODEL || "claude-sonnet-4-5-20250929",
+      model: process.env.ANTHROPIC_MODEL || "claude-sonnet-4-6",
       maxIterations: getAgentState().maxIterations,
       maxRuntimeMs: getAgentState().maxRuntimeMs,
       creditCost: AGENT_RUN_CREDIT_COST,
       remainingCredits: charged.profile.credits,
       plan: charged.profile.plan,
+      runId,
     },
   });
 
-  runAgentLoop(taskPrompt).catch((error) => {
+  const runContext = runId ? { userId: charged.profile.id, runId } : null;
+  runAgentLoop(taskPrompt, runContext).catch((error) => {
     const message = error instanceof Error ? error.message : String(error || "Unknown agent loop error");
     appendAgentLog({ type: "error", payload: { message } });
   });

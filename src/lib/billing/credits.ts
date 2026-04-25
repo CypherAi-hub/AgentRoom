@@ -213,14 +213,40 @@ export async function getAuthenticatedBillingProfile(request: NextRequest): Prom
     return failure(500, "PROFILE_READ_FAILED", profileError.message);
   }
 
-  if (!profileRow || typeof profileRow !== "object" || Array.isArray(profileRow)) {
-    return failure(403, "PROFILE_REQUIRED", "Create a profile before starting the sandbox agent.");
+  let resolvedRow: Record<string, unknown> | null =
+    profileRow && typeof profileRow === "object" && !Array.isArray(profileRow)
+      ? (profileRow as Record<string, unknown>)
+      : null;
+
+  if (!resolvedRow) {
+    if (!credentials.serviceRoleKey) {
+      return failure(403, "PROFILE_REQUIRED", "Create a profile before starting the sandbox agent.");
+    }
+
+    const { data: createdRow, error: createError } = await profileSupabase
+      .from("profiles")
+      .upsert(
+        { id: user.id, email: user.email ?? "", plan: "free", credits: 10 },
+        { onConflict: "id" },
+      )
+      .select("*")
+      .maybeSingle();
+
+    if (createError) {
+      return failure(500, "PROFILE_READ_FAILED", createError.message);
+    }
+
+    if (!createdRow || typeof createdRow !== "object" || Array.isArray(createdRow)) {
+      return failure(500, "PROFILE_REQUIRED", "Failed to create a profile for this account.");
+    }
+
+    resolvedRow = createdRow as Record<string, unknown>;
   }
 
   return {
     ok: true,
     userId: user.id,
-    profile: normalizeProfile(profileRow as Record<string, unknown>, user.email),
+    profile: normalizeProfile(resolvedRow, user.email),
     supabase: profileSupabase,
     hasServiceRoleKey: Boolean(credentials.serviceRoleKey),
   };

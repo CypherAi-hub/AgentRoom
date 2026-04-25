@@ -1,10 +1,7 @@
 import { AppShell } from "@/components/shell/app-shell";
-import { AgentRoomStoreProvider } from "@/lib/store/agent-room-store";
+import { getAppShellSession } from "@/lib/supabase/app-session";
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <AgentRoomStoreProvider>
-      <AppShell>{children}</AppShell>
-    </AgentRoomStoreProvider>
-  );
+export default async function AppLayout({ children }: { children: React.ReactNode }) {
+  const session = await getAppShellSession();
+  return <AppShell session={session}>{children}</AppShell>;
 }

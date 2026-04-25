@@ -2,8 +2,17 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { getSafeNextPath, getSupabaseConfig } from "@/lib/supabase/config";
 
-const PROTECTED_PAGE_PREFIXES = ["/dev/sandbox-test", "/billing"] as const;
-const PROTECTED_API_PREFIXES = ["/api/dev/sandbox-test", "/api/billing"] as const;
+const PROTECTED_PAGE_PREFIXES = [
+  "/dashboard",
+  "/rooms",
+  "/agents",
+  "/runs",
+  "/integrations",
+  "/settings",
+  "/dev/sandbox-test",
+  "/billing",
+] as const;
+const PROTECTED_API_PREFIXES = ["/api/dev/sandbox-test", "/api/billing", "/api/profile"] as const;
 
 function hasPathPrefix(pathname: string, prefix: string) {
   return pathname === prefix || pathname.startsWith(`${prefix}/`);

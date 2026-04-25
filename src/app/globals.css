@@ -45,3 +45,18 @@ button, input { font: inherit; }
 .glass-panel { border: 1px solid rgba(255,255,255,.1); background: linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.02)); box-shadow: 0 24px 80px rgba(0,0,0,.26); }
 .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.auth-input:focus { border-color: #3EE98C; box-shadow: 0 8px 24px rgba(62, 233, 140, 0.15); }
+@keyframes ar-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+.ar-cursor::after {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 14px;
+  margin-left: 2px;
+  background: #3EE98C;
+  vertical-align: middle;
+  animation: ar-blink 1s steps(1) infinite;
+}

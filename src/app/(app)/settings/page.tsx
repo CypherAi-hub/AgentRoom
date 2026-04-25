@@ -1,3 +1,49 @@
-import { Badge, Card, CardContent, CardHeader, CardTitle } from "@/components/ui/primitives";
-const settings = ["Profile", "Rooms", "API keys", "Agent permissions", "Billing", "Team members"];
-export default function SettingsPage() { return <div className="flex flex-col gap-6"><div><p className="text-sm font-medium uppercase tracking-[0.18em] text-muted-foreground">Settings</p><h1 className="mt-2 text-3xl font-semibold">Workspace controls</h1><p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">Settings are intentionally mocked. No auth, billing, real secrets, or team invites are active in this MVP.</p></div><div className="grid gap-4 md:grid-cols-2">{settings.map((title) => <Card key={title} className="glass-panel"><CardHeader><div className="flex items-center justify-between gap-3"><CardTitle className="text-base">{title}</CardTitle><Badge variant="outline">Mock</Badge></div></CardHeader><CardContent><p className="text-sm leading-6 text-muted-foreground">{title} controls are planned for the real backend phase.</p></CardContent></Card>)}</div></div>; }
+import { redirect } from "next/navigation";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+
+export const dynamic = "force-dynamic";
+
+export default async function SettingsPage() {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login?next=/settings");
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("email, plan, credits, created_at")
+    .eq("id", user.id)
+    .maybeSingle<{ email: string | null; plan: string | null; credits: number | null; created_at: string | null }>();
+
+  return (
+    <div className="flex flex-col gap-6">
+      <header>
+        <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Account and billing essentials.</p>
+      </header>
+
+      <section className="rounded-lg border bg-card p-5">
+        <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-muted-foreground">Account</h2>
+        <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+          <div>
+            <dt className="text-xs text-muted-foreground">Email</dt>
+            <dd className="mt-1 text-sm">{profile?.email ?? user.email ?? "—"}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-muted-foreground">Plan</dt>
+            <dd className="mt-1 text-sm uppercase">{profile?.plan ?? "free"}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-muted-foreground">Credits</dt>
+            <dd className="mt-1 text-sm">{typeof profile?.credits === "number" ? profile.credits : 0}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-muted-foreground">User ID</dt>
+            <dd className="mt-1 break-all font-mono text-xs">{user.id}</dd>
+          </div>
+        </dl>
+      </section>
+    </div>
+  );
+}

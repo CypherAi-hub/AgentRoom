@@ -1,3 +1,59 @@
-import { AgentCard } from "@/components/cards";
-import { mockAgents } from "@/lib/mock-data";
-export default function AgentsPage() { return <div className="flex flex-col gap-6"><div><p className="text-sm font-medium uppercase tracking-[0.18em] text-muted-foreground">Agent Directory</p><h1 className="mt-2 text-3xl font-semibold">Reusable AI operators</h1><p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">Agents are data-backed roles with scoped tools, permissions, memory summaries, current tasks, and output history.</p></div><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{mockAgents.map((a) => <AgentCard key={a.id} agent={a} />)}</div></div>; }
+import { redirect } from "next/navigation";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getAgents } from "@/lib/data/agents";
+import { EmptyState, StatusPill, relativeTime } from "@/components/dashboard/dashboard-shared";
+
+export const dynamic = "force-dynamic";
+
+export default async function AgentsPage() {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login?next=/agents");
+
+  const agents = await getAgents(user.id);
+
+  return (
+    <div className="flex flex-col gap-6">
+      <header>
+        <h1 className="text-2xl font-semibold tracking-tight">Agents</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Your configured agents. Run them on real cloud machines.</p>
+      </header>
+
+      {agents.length ? (
+        <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {agents.map((agent) => (
+            <li key={agent.id} className="rounded-lg border bg-card p-5">
+              <div className="flex items-center gap-3">
+                <div
+                  aria-hidden="true"
+                  className="grid size-12 place-items-center rounded-full font-mono text-sm font-bold"
+                  style={{ background: `${agent.color}1a`, border: `1px solid ${agent.color}66`, color: agent.color }}
+                >
+                  {agent.avatarInitials}
+                </div>
+                <div className="min-w-0">
+                  <div className="truncate text-base font-semibold">{agent.name}</div>
+                  <div className="truncate text-xs uppercase tracking-[0.16em] text-muted-foreground">{agent.role}</div>
+                </div>
+              </div>
+              <p className="mt-4 line-clamp-3 text-sm text-muted-foreground">
+                {agent.description ?? "No description yet."}
+              </p>
+              <div className="mt-4 flex items-center justify-between text-xs">
+                <StatusPill status={agent.status} />
+                <span className="font-mono text-muted-foreground">added {relativeTime(agent.createdAt)}</span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <EmptyState
+          title="Your agents are ready."
+          description="Default agents (Engineer, Designer, QA, PM) seed automatically on signup."
+        />
+      )}
+    </div>
+  );
+}
