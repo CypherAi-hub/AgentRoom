@@ -9,6 +9,7 @@ Agent room pics/
 supabase/.temp/
 out/
 build/
+tsconfig.tsbuildinfo
 .agent-feed/screenshots/*
 .agent-feed/videos/*
 !.agent-feed/screenshots/.gitkeep
