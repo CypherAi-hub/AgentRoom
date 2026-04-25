@@ -7,21 +7,16 @@ end $$;
 create schema if not exists private;
 revoke all on schema private from public, anon, authenticated;
 
-create table if not exists public.profiles (
-  id uuid primary key references auth.users(id) on delete cascade,
-  email text not null,
-  plan public.billing_plan not null default 'free',
-  credits integer not null default 10 check (credits >= 0),
-  stripe_customer_id text unique,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
+alter table public.profiles
+  add column if not exists plan public.billing_plan not null default 'free';
+
+alter table public.profiles
+  add column if not exists credits integer not null default 10
+    check (credits >= 0);
 
 create unique index if not exists profiles_stripe_customer_id_key
   on public.profiles (stripe_customer_id)
   where stripe_customer_id is not null;
-
-alter table public.profiles enable row level security;
 
 create or replace function public.set_profiles_updated_at()
 returns trigger
