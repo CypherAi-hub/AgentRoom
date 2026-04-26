@@ -19,7 +19,8 @@ import { insertUsageLogAdmin } from "@/lib/data/usage-logs";
 import { updateRunAdmin } from "@/lib/data/runs";
 
 const DEFAULT_MODEL = "claude-sonnet-4-6";
-const COMPUTER_USE_BETA = "computer-use-2025-01-24";
+const COMPUTER_USE_BETA = "computer-use-2025-11-24";
+const COMPUTER_TOOL_TYPE = "computer_20251124";
 const DISPLAY_WIDTH = 1024;
 const DISPLAY_HEIGHT = 720;
 
@@ -394,7 +395,7 @@ export async function runAgentLoop(taskPrompt: string, ctx: RunContext | null = 
         system: SYSTEM_PROMPT,
         tools: [
           {
-            type: "computer_20250124",
+            type: COMPUTER_TOOL_TYPE,
             name: "computer",
             display_width_px: DISPLAY_WIDTH,
             display_height_px: DISPLAY_HEIGHT,
