@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { CreditCard } from "lucide-react";
 import { motion } from "framer-motion";
 import { PaywallModal } from "@/components/billing/paywall-modal";
@@ -190,6 +191,7 @@ export function SandboxTestClient({ onboardingTask = null, onboarding = false }:
   const [agentRunLimits, setAgentRunLimits] = useState<AgentRunLimits | null>(null);
   const [agentRunCreditCost, setAgentRunCreditCost] = useState(1);
   const [billingError, setBillingError] = useState<string | null>(null);
+  const [authRequired, setAuthRequired] = useState(false);
   const [paywallState, setPaywallState] = useState<PaywallState>({
     open: false,
     profile: null,
@@ -230,12 +232,15 @@ export function SandboxTestClient({ onboardingTask = null, onboarding = false }:
 
     if (!response.ok) {
       if (!nextProfile) setBillingProfile(null);
-      const message = body.code === "AUTH_REQUIRED" ? "Sign in required" : body.error || "Billing unavailable";
+      const isAuth = body.code === "AUTH_REQUIRED";
+      const message = isAuth ? "Sign in required" : body.error || "Billing unavailable";
+      setAuthRequired(isAuth);
       setBillingError(message);
       return null;
     }
 
     if (!nextProfile) setBillingProfile(null);
+    setAuthRequired(false);
     setBillingError(null);
     return nextProfile;
   }, [applyBillingBody]);
@@ -265,24 +270,70 @@ export function SandboxTestClient({ onboardingTask = null, onboarding = false }:
   }, [refreshBillingProfile]);
 
   useEffect(() => {
-    const source = new EventSource("/api/dev/sandbox-test/agent/events");
+    let cancelled = false;
+    let source: EventSource | null = null;
+    let reconnectTimer: number | null = null;
+    let backoffMs = 1000;
+    const MAX_BACKOFF_MS = 30_000;
 
-    source.onmessage = (message) => {
-      try {
-        const event = JSON.parse(message.data) as AgentEvent;
-        setAgentLogs((current) => mergeEvents([...current, event]));
-        refreshState().catch(() => {});
-      } catch {
-        // Ignore malformed dev SSE payloads.
+    const clearReconnect = () => {
+      if (reconnectTimer !== null) {
+        window.clearTimeout(reconnectTimer);
+        reconnectTimer = null;
       }
     };
 
-    source.onerror = () => {
-      source.close();
+    const scheduleReconnect = () => {
+      if (cancelled) return;
+      clearReconnect();
+      const delay = backoffMs;
+      backoffMs = Math.min(backoffMs * 2, MAX_BACKOFF_MS);
+      reconnectTimer = window.setTimeout(() => {
+        reconnectTimer = null;
+        connect();
+      }, delay);
     };
 
+    const connect = () => {
+      if (cancelled) return;
+      try {
+        source = new EventSource("/api/dev/sandbox-test/agent/events");
+      } catch {
+        scheduleReconnect();
+        return;
+      }
+
+      source.onmessage = (message) => {
+        // Reset backoff on any successful event.
+        backoffMs = 1000;
+        try {
+          const event = JSON.parse(message.data) as AgentEvent;
+          setAgentLogs((current) => mergeEvents([...current, event]));
+          refreshState().catch(() => {});
+        } catch {
+          // Ignore malformed dev SSE payloads.
+        }
+      };
+
+      source.onerror = () => {
+        // Browsers may auto-reconnect, but to be safe close + reconnect with backoff.
+        if (source) {
+          source.close();
+          source = null;
+        }
+        scheduleReconnect();
+      };
+    };
+
+    connect();
+
     return () => {
-      source.close();
+      cancelled = true;
+      clearReconnect();
+      if (source) {
+        source.close();
+        source = null;
+      }
     };
   }, [refreshState]);
 
@@ -525,6 +576,23 @@ export function SandboxTestClient({ onboardingTask = null, onboarding = false }:
             </h1>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            {authRequired ? (
+              <Link
+                href="/login?next=/dev/sandbox-test"
+                className="inline-flex items-center gap-2 rounded-md font-mono"
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  padding: "6px 10px",
+                  color: "#3EE98C",
+                  background: "rgba(62,233,140,0.12)",
+                  border: "1px solid rgba(62,233,140,0.30)",
+                }}
+              >
+                <CreditCard className="size-3.5" />
+                <span>Sign in required → Log in</span>
+              </Link>
+            ) : (
             <motion.button
               type="button"
               whileTap={{ scale: 0.98 }}
@@ -550,6 +618,7 @@ export function SandboxTestClient({ onboardingTask = null, onboarding = false }:
               <CreditCard className="size-3.5" />
               <span>{billingProfile ? `${billingProfile.plan.toUpperCase()} · ${creditPillLabel}` : creditPillLabel}</span>
             </motion.button>
+            )}
             <StatusPill kind={statusKind} />
           </div>
         </header>

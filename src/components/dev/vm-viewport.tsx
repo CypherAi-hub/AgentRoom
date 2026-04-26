@@ -115,6 +115,7 @@ export function VmViewport({
             >
               <iframe
                 allow="clipboard-read; clipboard-write; fullscreen"
+                sandbox="allow-scripts allow-same-origin"
                 className="h-full w-full border-0"
                 src={streamUrl}
                 title="E2B desktop stream"
