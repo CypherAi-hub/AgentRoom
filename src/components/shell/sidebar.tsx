@@ -38,7 +38,7 @@ export function Sidebar({ onNavigate, session }: { onNavigate?: () => void; sess
 
       <nav className="flex flex-col gap-1">
         {NAV.map((item) => {
-          const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
+          const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
           return (
             <Link
               key={item.href}

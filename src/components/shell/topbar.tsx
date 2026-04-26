@@ -43,13 +43,39 @@ export function Topbar({
       refresh().catch(() => {});
     }
 
+    let timer: number | null = null;
+    function startPolling() {
+      if (timer === null) {
+        timer = window.setInterval(refresh, 30_000);
+      }
+    }
+    function stopPolling() {
+      if (timer !== null) {
+        window.clearInterval(timer);
+        timer = null;
+      }
+    }
+
+    function onVisibilityChange() {
+      if (document.hidden) {
+        stopPolling();
+      } else {
+        refresh().catch(() => {});
+        startPolling();
+      }
+    }
+
     window.addEventListener("focus", onFocus);
-    const timer = window.setInterval(refresh, 30_000);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    if (!document.hidden) {
+      startPolling();
+    }
 
     return () => {
       cancelled = true;
       window.removeEventListener("focus", onFocus);
-      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      stopPolling();
     };
   }, []);
 
