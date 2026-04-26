@@ -27,8 +27,9 @@ async function getCheckoutError(response: Response) {
   const text = await response.text();
 
   try {
-    const json = JSON.parse(text) as { error?: string; message?: string };
-    return json.error ?? json.message ?? "Checkout could not start.";
+    const json = JSON.parse(text) as { error?: string; message?: string; code?: string; requestId?: string };
+    const base = json.message ?? json.error ?? "Checkout could not start.";
+    return json.requestId ? `${base} (ref ${json.requestId.slice(0, 8)})` : base;
   } catch {
     return text || "Checkout could not start.";
   }
@@ -40,7 +41,8 @@ export function CheckoutButton({ payload, children, className, disabled, variant
 
   async function startCheckout() {
     setLoading(true);
-    setError(null);
+    // Keep previous error visible while the retry is in flight; only clear it
+    // on a successful redirect or replace with the new error message.
 
     try {
       const response = await fetch("/api/billing/checkout", {
@@ -59,6 +61,7 @@ export function CheckoutButton({ payload, children, className, disabled, variant
         throw new Error(data?.error ?? data?.message ?? "Checkout did not return a redirect URL.");
       }
 
+      setError(null);
       window.location.assign(data.url);
     } catch (checkoutError) {
       setError(checkoutError instanceof Error ? checkoutError.message : "Checkout could not start.");

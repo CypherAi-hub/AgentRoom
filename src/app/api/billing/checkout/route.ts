@@ -1,8 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
+import { randomUUID } from "node:crypto";
+import Stripe from "stripe";
 import { CREDIT_PACKS, PRO_PLAN, parseCheckoutInput } from "@/lib/billing/config";
 import { BillingConfigurationError } from "@/lib/billing/errors";
 import { getAuthenticatedBillingUser, getOrCreateStripeCustomerId } from "@/lib/billing/supabase";
 import { getStripeClient } from "@/lib/billing/stripe";
+
+class CheckoutValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "CheckoutValidationError";
+  }
+}
+
+const TRANSIENT_STRIPE_ERROR_TYPES = new Set([
+  "StripeConnectionError",
+  "StripeAPIError",
+  "StripeRateLimitError",
+]);
+
+function isTransientStripeError(error: unknown): boolean {
+  if (error instanceof Stripe.errors.StripeError) {
+    return TRANSIENT_STRIPE_ERROR_TYPES.has(error.type ?? "") || TRANSIENT_STRIPE_ERROR_TYPES.has(error.name);
+  }
+  if (error instanceof Error && TRANSIENT_STRIPE_ERROR_TYPES.has(error.name)) {
+    return true;
+  }
+  return false;
+}
+
+function isStripeInvalidRequest(error: unknown): boolean {
+  return error instanceof Stripe.errors.StripeInvalidRequestError;
+}
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -28,17 +57,18 @@ function getRequestOrigin(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const requestId = randomUUID();
   try {
     const body = await request.json().catch(() => null);
     const input = parseCheckoutInput(body);
 
     if (!input) {
-      return json({ error: "Invalid billing request." }, 400);
+      throw new CheckoutValidationError("Invalid billing request.");
     }
 
     const user = await getAuthenticatedBillingUser();
     if (!user) {
-      return json({ error: "Unauthorized." }, 401);
+      return json({ error: "Unauthorized.", code: "unauthorized", requestId }, 401);
     }
 
     const origin = getRequestOrigin(request);
@@ -116,10 +146,38 @@ export async function POST(request: NextRequest) {
       throw new Error("Stripe Checkout did not return a session URL.");
     }
 
-    return json({ url: session.url });
+    return json({ url: session.url, requestId });
   } catch (error) {
-    console.error("[billing.checkout]", error);
-    const status = error instanceof BillingConfigurationError ? 500 : 502;
-    return json({ error: "Billing checkout unavailable." }, status);
+    console.error("[billing.checkout]", { requestId, error });
+
+    if (error instanceof BillingConfigurationError) {
+      return json(
+        { code: "config_error", message: "Billing isn't fully configured.", requestId },
+        500,
+      );
+    }
+
+    if (error instanceof CheckoutValidationError || isStripeInvalidRequest(error)) {
+      return json(
+        {
+          code: "invalid_request",
+          message: error instanceof Error ? error.message : "Invalid billing request.",
+          requestId,
+        },
+        400,
+      );
+    }
+
+    if (isTransientStripeError(error)) {
+      return json(
+        { code: "stripe_unavailable", message: "Stripe isn't responding. Try again.", requestId },
+        502,
+      );
+    }
+
+    return json(
+      { code: "internal", message: "Something went wrong.", requestId },
+      500,
+    );
   }
 }
