@@ -13,9 +13,14 @@ const PROTECTED_PAGE_PREFIXES = [
   "/billing",
 ] as const;
 const PROTECTED_API_PREFIXES = ["/api/dev/sandbox-test", "/api/billing", "/api/profile"] as const;
+const PUBLIC_API_PATHS = ["/api/billing/webhook"] as const;
 
 function hasPathPrefix(pathname: string, prefix: string) {
   return pathname === prefix || pathname.startsWith(`${prefix}/`);
+}
+
+function isPublicApiPath(pathname: string) {
+  return PUBLIC_API_PATHS.some((path) => hasPathPrefix(pathname, path));
 }
 
 function isProtectedPagePath(pathname: string) {
@@ -23,6 +28,7 @@ function isProtectedPagePath(pathname: string) {
 }
 
 function isProtectedApiPath(pathname: string) {
+  if (isPublicApiPath(pathname)) return false;
   return PROTECTED_API_PREFIXES.some((prefix) => hasPathPrefix(pathname, prefix));
 }
 
