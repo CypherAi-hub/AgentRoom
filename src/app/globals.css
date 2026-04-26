@@ -1,5 +1,40 @@
 @import "tailwindcss";
+
+/*
+ * Design tokens exposed to Tailwind via @theme inline.
+ * The single source of truth lives in src/styles/design-tokens.ts —
+ * the values below mirror that file. If you change one, change both.
+ */
 @theme inline {
+  /* Backgrounds */
+  --color-bg-base: var(--bg-base);
+  --color-bg-surface: var(--bg-surface);
+  --color-bg-surface-hi: var(--bg-surface-hi);
+  --color-bg-input: var(--bg-input);
+
+  /* Borders */
+  --color-border-subtle: var(--border-subtle);
+  --color-border-default: var(--border-default);
+  --color-border-strong: var(--border-strong);
+  --color-border-focus: var(--border-focus);
+
+  /* Text */
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-text-disabled: var(--text-disabled);
+
+  /* Accent */
+  --color-accent-hero: var(--accent-hero);
+  --color-accent-hero-dim: var(--accent-hero-dim);
+  --color-accent-hero-fg: var(--accent-hero-fg);
+
+  /* Status */
+  --color-status-error: var(--status-error);
+  --color-status-warn: var(--status-warn);
+  --color-status-info: var(--status-info);
+
+  /* Legacy shadcn-style aliases — kept until migration completes */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -12,11 +47,83 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-border: var(--border);
   --color-ring: var(--ring);
-  --font-sans: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
+
+  /* Spacing — 4px grid */
+  --spacing-1: 4px;
+  --spacing-2: 8px;
+  --spacing-3: 12px;
+  --spacing-4: 16px;
+  --spacing-5: 20px;
+  --spacing-6: 24px;
+  --spacing-8: 32px;
+  --spacing-10: 40px;
+  --spacing-12: 48px;
+  --spacing-16: 64px;
+  --spacing-20: 80px;
+  --spacing-24: 96px;
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  /* Typography scale */
+  --text-display: 32px;
+  --text-h1: 24px;
+  --text-h2: 20px;
+  --text-h3: 16px;
+  --text-body: 14px;
+  --text-body-sm: 13px;
+  --text-caption: 12px;
+  --text-mono: 13px;
+  --text-mono-sm: 11px;
+
+  /* Fonts */
+  --font-sans: "Inter", "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
+
+  /* Motion */
+  --ease-out-token: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-token: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Shadows */
+  --shadow-token-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-token-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --shadow-token-lg: 0 12px 32px rgba(0, 0, 0, 0.6);
+  --shadow-glow: 0 0 0 1px rgba(62, 233, 140, 0.20), 0 0 24px rgba(62, 233, 140, 0.15);
 }
+
 :root {
   color-scheme: dark;
+
+  /* Token CSS vars — consume in raw CSS where Tailwind utilities aren't enough */
+  --bg-base: #0A0A0A;
+  --bg-surface: #111111;
+  --bg-surface-hi: #161616;
+  --bg-input: #0D0D0D;
+
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-default: rgba(255, 255, 255, 0.10);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --border-focus: rgba(62, 233, 140, 0.40);
+
+  --text-primary: #FAFAFA;
+  --text-secondary: #A1A1A1;
+  --text-muted: #6B6B6B;
+  --text-disabled: #4A4A4A;
+
+  --accent-hero: #3EE98C;
+  --accent-hero-dim: rgba(62, 233, 140, 0.12);
+  --accent-hero-fg: #0A0A0A;
+
+  --status-error: #E24B4A;
+  --status-warn: #F5B544;
+  --status-info: #6FAFE3;
+
+  /* Legacy shadcn-style — kept for back-compat with existing components */
   --background: #07080d;
   --foreground: #f7f8fb;
   --card: #0c1018;
@@ -30,8 +137,20 @@
   --border: rgba(255, 255, 255, 0.1);
   --ring: #7dd3fc;
 }
-* { box-sizing: border-box; border-color: var(--border); }
-html, body { min-height: 100%; width: 100%; overflow-x: hidden; background: var(--background); }
+
+* {
+  box-sizing: border-box;
+  border-color: var(--border);
+}
+
+html,
+body {
+  min-height: 100%;
+  width: 100%;
+  overflow-x: hidden;
+  background: var(--background);
+}
+
 body {
   margin: 0;
   color: var(--foreground);
@@ -40,23 +159,81 @@ body {
     radial-gradient(circle at 92% 8%, rgba(24, 185, 129, 0.08), transparent 26%),
     linear-gradient(140deg, #07080d 0%, #090c13 46%, #050609 100%);
 }
-a { color: inherit; text-decoration: none; }
-button, input { font: inherit; }
-.glass-panel { border: 1px solid rgba(255,255,255,.1); background: linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.02)); box-shadow: 0 24px 80px rgba(0,0,0,.26); }
-.line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-.auth-input:focus { border-color: #3EE98C; box-shadow: 0 8px 24px rgba(62, 233, 140, 0.15); }
-@keyframes ar-blink {
-  0%, 49% { opacity: 1; }
-  50%, 100% { opacity: 0; }
+
+a {
+  color: inherit;
+  text-decoration: none;
 }
+
+button,
+input {
+  font: inherit;
+}
+
+.glass-panel {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.02));
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.26);
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.auth-input:focus {
+  border-color: var(--accent-hero);
+  box-shadow: 0 8px 24px rgba(62, 233, 140, 0.15);
+}
+
+@keyframes ar-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
 .ar-cursor::after {
-  content: '';
+  content: "";
   display: inline-block;
   width: 8px;
   height: 14px;
   margin-left: 2px;
-  background: #3EE98C;
+  background: var(--accent-hero);
   vertical-align: middle;
   animation: ar-blink 1s steps(1) infinite;
+}
+
+/* Shimmer for skeleton loaders */
+@keyframes ar-shimmer {
+  0% {
+    background-position: -400px 0;
+  }
+  100% {
+    background-position: 400px 0;
+  }
+}
+
+.ar-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--bg-surface) 0%,
+    var(--bg-surface-hi) 50%,
+    var(--bg-surface) 100%
+  );
+  background-size: 800px 100%;
+  animation: ar-shimmer 1.6s linear infinite;
 }
