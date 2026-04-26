@@ -1,5 +1,8 @@
 "use client";
 
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { CheckCircle2, Info, X } from "lucide-react";
 import { BillingSummaryPanel } from "@/components/billing/billing-summary-panel";
 import { CheckoutButton } from "@/components/billing/checkout-button";
 import {
@@ -9,16 +12,27 @@ import {
   type BillingProfile,
 } from "@/lib/billing/plans";
 
-type BillingPageClientProps = {
-  profile?: Partial<BillingProfile> | null;
+export type BillingBanner = {
+  kind: "success" | "info" | "error";
+  message: string;
 };
 
-export function BillingPageClient({ profile = FALLBACK_BILLING_PROFILE }: BillingPageClientProps) {
+type BillingPageClientProps = {
+  profile?: Partial<BillingProfile> | null;
+  banner?: BillingBanner | null;
+};
+
+export function BillingPageClient({
+  profile = FALLBACK_BILLING_PROFILE,
+  banner = null,
+}: BillingPageClientProps) {
   const billingProfile = withBillingFallback(profile);
   const isPro = billingProfile.planId === "pro";
 
   return (
     <div className="flex w-full flex-col gap-6">
+      <CheckoutBanner banner={banner} />
+
       <BillingSummaryPanel profile={billingProfile} />
 
       <section className="grid gap-3 sm:grid-cols-2">
@@ -55,6 +69,61 @@ export function BillingPageClient({ profile = FALLBACK_BILLING_PROFILE }: Billin
           </table>
         </div>
       </section>
+    </div>
+  );
+}
+
+function CheckoutBanner({ banner }: { banner: BillingBanner | null }) {
+  const router = useRouter();
+  const [dismissed, setDismissed] = useState(false);
+
+  if (!banner || dismissed) return null;
+
+  const isSuccess = banner.kind === "success";
+  const isError = banner.kind === "error";
+
+  const containerStyle: React.CSSProperties = isSuccess
+    ? {
+        borderColor: "rgba(62,233,140,0.35)",
+        background: "rgba(62,233,140,0.08)",
+        color: "#3EE98C",
+        boxShadow: "var(--shadow-glow)",
+      }
+    : isError
+      ? {
+          borderColor: "rgba(226,75,74,0.35)",
+          background: "rgba(226,75,74,0.08)",
+          color: "#E24B4A",
+        }
+      : {
+          borderColor: "rgba(255,255,255,0.1)",
+          background: "rgba(255,255,255,0.04)",
+          color: "#A0A0A0",
+        };
+
+  function handleDismiss() {
+    setDismissed(true);
+    router.replace("/billing");
+  }
+
+  const Icon = isSuccess ? CheckCircle2 : Info;
+
+  return (
+    <div
+      role="status"
+      className="flex items-start gap-3 rounded-lg border px-4 py-3 text-sm"
+      style={containerStyle}
+    >
+      <Icon className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+      <p className="flex-1 leading-5">{banner.message}</p>
+      <button
+        type="button"
+        onClick={handleDismiss}
+        className="rounded p-1 text-current opacity-70 transition hover:opacity-100"
+        aria-label="Dismiss banner"
+      >
+        <X className="size-4" aria-hidden="true" />
+      </button>
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getRun } from "@/lib/data/runs";
@@ -36,6 +37,24 @@ function toEvent(log: UsageLog): TimelineEvent {
   };
 }
 
+function StreamPill({ status }: { status: string }) {
+  if (status === "running") {
+    return (
+      <Link
+        href="/dev/sandbox-test"
+        className="inline-flex items-center gap-1.5 rounded-full border border-sky-300/35 bg-sky-300/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-sky-100 transition hover:bg-sky-300/15"
+      >
+        <span
+          className="size-1.5 rounded-full bg-sky-300"
+          aria-hidden="true"
+        />
+        Live
+      </Link>
+    );
+  }
+  return <span className="text-sm text-muted-foreground">—</span>;
+}
+
 export default async function RunDetailPage({
   params,
 }: {
@@ -66,6 +85,7 @@ export default async function RunDetailPage({
         <Field label="Credits used" value={`${run.creditsUsed} cr`} mono />
         <Field label="Agent" value={run.agentName ?? "—"} />
         <Field label="Sandbox" value={run.sandboxId ?? "—"} mono />
+        <Field label="Stream" valueNode={<StreamPill status={run.status} />} />
       </section>
 
       {run.errorMessage ? (

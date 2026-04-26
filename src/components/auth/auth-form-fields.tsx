@@ -111,6 +111,18 @@ function GoogleMark() {
 
 type OAuthProvider = "github" | "google";
 
+function friendlyOAuthMessage(rawMessage: string, provider: OAuthProvider): string {
+  const lower = rawMessage.toLowerCase();
+  if (lower.includes("popup") || lower.includes("blocked")) {
+    return "Pop-up was blocked. Allow pop-ups for agentroom.app and try again.";
+  }
+  if (lower.includes("rate")) {
+    return "Too many sign-in attempts. Try again in a minute.";
+  }
+  const providerLabel = provider === "github" ? "GitHub" : "Google";
+  return `We couldn't reach ${providerLabel}. Try again or use email + password.`;
+}
+
 function OAuthButton({
   provider,
   label,
@@ -137,11 +149,14 @@ function OAuthButton({
         options: { redirectTo },
       });
       if (oauthError) {
-        setError(oauthError.message);
+        console.error("OAuth sign-in error", { provider, message: oauthError.message });
+        setError(friendlyOAuthMessage(oauthError.message, provider));
         setPending(false);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to start sign-in.");
+      const rawMessage = err instanceof Error ? err.message : "Unable to start sign-in.";
+      console.error("OAuth sign-in threw", { provider, error: err });
+      setError(friendlyOAuthMessage(rawMessage, provider));
       setPending(false);
     }
   }
