@@ -19,6 +19,7 @@ import {
 } from "react";
 import styles from "@/app/dev/sandbox-test/sandbox.module.css";
 import { SkeletonRow } from "./skeleton-vm";
+import { Base64Img } from "./base64-img";
 
 type AgentEventType =
   | "agent_started"
@@ -101,7 +102,7 @@ function inputSummary(input: unknown) {
   if (typeof input.text === "string") bits.push(`text ${input.text.length} chars`);
   if (typeof input.key === "string") bits.push(`key ${input.key}`);
   if (typeof input.scroll_direction === "string") bits.push(`scroll ${input.scroll_direction}`);
-  return bits.join(" - ");
+  return bits.join(" \u00B7 ");
 }
 
 function jsonPreview(value: unknown) {
@@ -350,9 +351,8 @@ function EventRow({
 
       {event.type === "screenshot" && b64 ? (
         <button type="button" onClick={toggleScreenshot} className="mt-3 block text-left">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            alt="Agent screenshot"
+          <Base64Img
+            alt={`Screenshot from action ${action} at ${formatTime(event.ts)}`}
             src={`data:image/png;base64,${b64}`}
             className={isScreenshotExpanded ? "max-h-[420px] rounded" : "h-24 rounded"}
             style={{ border: "1px solid rgba(255,255,255,0.06)" }}
@@ -417,7 +417,15 @@ function EventBody({
     return (
       <p className="mt-2 text-sm" style={{ color: "#3EE98C" }}>
         Action: <span className="font-mono">{action}</span>
-        {payload.input ? <span style={{ color: "#6B6B6B" }}> — {inputSummary(payload.input)}</span> : null}
+        {payload.input ? (
+          <span
+            style={{ color: "#6B6B6B" }}
+            aria-label={`with input ${inputSummary(payload.input)}`}
+          >
+            {" \u2014 "}
+            {inputSummary(payload.input)}
+          </span>
+        ) : null}
       </p>
     );
   }
