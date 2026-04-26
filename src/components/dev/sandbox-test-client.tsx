@@ -276,6 +276,55 @@ export function SandboxTestClient({ onboardingTask = null, onboarding = false }:
     let backoffMs = 1000;
     const MAX_BACKOFF_MS = 30_000;
 
+    // Debounce refreshState across SSE bursts. SSE delivers many micro-events
+    // per agent iteration (tool_use, screenshot, tool_result, …); the previous
+    // implementation hit /state for every one of them. Quiet window: 1s.
+    // Hard cap: never wait more than 5s once a refresh is pending.
+    const QUIET_MS = 1000;
+    const MAX_WAIT_MS = 5000;
+    let pendingTimer: number | null = null;
+    let firstPendingAt: number | null = null;
+    let lastFiredAt = 0;
+
+    const clearPending = () => {
+      if (pendingTimer !== null) {
+        window.clearTimeout(pendingTimer);
+        pendingTimer = null;
+      }
+      firstPendingAt = null;
+    };
+
+    const fireRefresh = () => {
+      pendingTimer = null;
+      firstPendingAt = null;
+      lastFiredAt = Date.now();
+      refreshState().catch(() => {});
+    };
+
+    const scheduleDebouncedRefresh = () => {
+      if (cancelled) return;
+      const now = Date.now();
+      if (firstPendingAt === null) firstPendingAt = now;
+      const elapsedSincePending = now - firstPendingAt;
+      const elapsedSinceFire = lastFiredAt === 0 ? Infinity : now - lastFiredAt;
+      // Cap how long we can defer: take the smaller of QUIET_MS (debounce) and
+      // whatever's left of MAX_WAIT_MS since the first pending event.
+      const remainingMaxWait = Math.max(0, MAX_WAIT_MS - elapsedSincePending);
+      const delay = Math.min(QUIET_MS, remainingMaxWait);
+      // If we've gone >5s since the last actual fire AND we have something
+      // pending, fire immediately to keep the UI from going stale.
+      if (elapsedSinceFire >= MAX_WAIT_MS) {
+        if (pendingTimer !== null) {
+          window.clearTimeout(pendingTimer);
+          pendingTimer = null;
+        }
+        fireRefresh();
+        return;
+      }
+      if (pendingTimer !== null) window.clearTimeout(pendingTimer);
+      pendingTimer = window.setTimeout(fireRefresh, delay);
+    };
+
     const clearReconnect = () => {
       if (reconnectTimer !== null) {
         window.clearTimeout(reconnectTimer);
@@ -309,7 +358,7 @@ export function SandboxTestClient({ onboardingTask = null, onboarding = false }:
         try {
           const event = JSON.parse(message.data) as AgentEvent;
           setAgentLogs((current) => mergeEvents([...current, event]));
-          refreshState().catch(() => {});
+          scheduleDebouncedRefresh();
         } catch {
           // Ignore malformed dev SSE payloads.
         }
@@ -330,6 +379,7 @@ export function SandboxTestClient({ onboardingTask = null, onboarding = false }:
     return () => {
       cancelled = true;
       clearReconnect();
+      clearPending();
       if (source) {
         source.close();
         source = null;
