@@ -68,3 +68,39 @@ export type UsageThisMonth = {
   creditsUsed: number;
   runsStarted: number;
 };
+
+export type IntegrationProvider =
+  | "github"
+  | "slack"
+  | "linear"
+  | "vercel"
+  | "resend"
+  | "supabase";
+
+/**
+ * Server-only shape — token fields must NEVER be sent to the client.
+ * Use UserIntegrationPublic for anything that crosses the network.
+ */
+export type UserIntegration = {
+  id: string;
+  userId: string;
+  provider: IntegrationProvider;
+  accessToken: string;
+  refreshToken: string | null;
+  tokenExpiresAt: string | null;
+  scopes: string[];
+  externalAccountId: string | null;
+  externalAccountLogin: string | null;
+  metadata: Record<string, unknown>;
+  connectedAt: string;
+  lastUsedAt: string | null;
+};
+
+/** Client-safe — what server components and React props can carry. */
+export type UserIntegrationPublic = {
+  provider: IntegrationProvider;
+  externalAccountLogin: string | null;
+  scopes: string[];
+  connectedAt: string;
+  lastUsedAt: string | null;
+};
