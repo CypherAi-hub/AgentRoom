@@ -11,6 +11,7 @@ node_modules/
 secrets/
 .next/
 .playwright-cli/
+.claude/worktrees/
 Agent room pics/
 supabase/.temp/
 out/
