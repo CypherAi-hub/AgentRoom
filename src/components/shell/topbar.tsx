@@ -100,7 +100,7 @@ export function Topbar({
           className="hidden h-8 items-center gap-2 rounded-full border border-border-subtle px-3 text-xs text-text-secondary transition-colors duration-200 ease-out hover:bg-bg-surface hover:text-text-primary sm:inline-flex"
         >
           <Tag className="size-3.5" />
-          Pricing
+          {signedIn ? "Billing" : "Pricing"}
         </Link>
 
         {signedIn ? (
@@ -120,9 +120,11 @@ export function Topbar({
               <CreditCard className="size-3.5" style={{ color: "var(--status-info)" }} />
               {formatCredits(credits)}
             </div>
-            <div className="hidden max-w-[220px] truncate rounded-full border border-border-subtle px-3 py-1.5 text-xs text-text-secondary sm:block">
-              {email}
-            </div>
+            {email ? (
+              <div className="hidden max-w-[220px] truncate rounded-full border border-border-subtle px-3 py-1.5 text-xs text-text-secondary sm:block">
+                {email}
+              </div>
+            ) : null}
             <form action="/auth/logout" method="post">
               <Button variant="outline" size="sm" className="px-2.5 sm:px-3" type="submit" aria-label="Log out">
                 <LogOut className="size-4" />

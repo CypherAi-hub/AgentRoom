@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +15,8 @@ export async function POST(request: NextRequest) {
   } catch {
     loginUrl.searchParams.set("error", "Signed out locally. Supabase session cleanup was unavailable.");
   }
+
+  revalidatePath("/", "layout");
 
   return NextResponse.redirect(loginUrl, { status: 303 });
 }

@@ -102,7 +102,7 @@ const PLANS = [
     priceSuffix: "/month",
     description: "For builders who need agents working all week.",
     subDescription: "≈ replaces ~$60+ of manual work",
-    pill: "✓ INCLUDES $15 IN USAGE",
+    pill: "INCLUDES $15 IN USAGE",
     features: [
       "100 minutes of VM time",
       "3 concurrent sandboxes",
@@ -503,7 +503,6 @@ export default async function PricingPage() {
           }}
         >
           <span>agentroom.app · cypherai-hub</span>
-          <span>Pricing v4 · Apr 2026</span>
         </footer>
       </div>
     </main>

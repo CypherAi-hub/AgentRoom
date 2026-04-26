@@ -133,7 +133,7 @@ export function PlanCard({
 
       {pill ? (
         <span
-          className="mt-3 inline-flex w-fit items-center rounded-md border px-2.5 py-1 text-[10px] font-bold tracking-[0.16em]"
+          className="mt-3 inline-flex w-fit items-center gap-1.5 rounded-md border px-2.5 py-1 text-[10px] font-bold tracking-[0.16em]"
           style={{
             ...MONO,
             background: "rgba(62,233,140,0.08)",
@@ -141,6 +141,7 @@ export function PlanCard({
             color: TOKEN.accentHero,
           }}
         >
+          <CheckCircle2 className="size-3" aria-hidden="true" />
           {pill}
         </span>
       ) : null}

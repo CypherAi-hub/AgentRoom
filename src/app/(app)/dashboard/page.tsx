@@ -40,7 +40,17 @@ export default async function DashboardPage() {
   const timeSavedMinutes = stats.completed * 10;
 
   const isNewUser = totalRuns === 0 && agentCount === 0;
-  const firstName = user.email ? user.email.split("@")[0] : null;
+  const firstName = (() => {
+    if (!user.email) return null;
+    const localPart = user.email.split("@")[0];
+    if (!localPart) return null;
+    const cleaned = localPart.split("+")[0]?.replace(/[._-]+/g, " ").trim();
+    if (!cleaned) return null;
+    return cleaned
+      .split(/\s+/)
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+      .join(" ");
+  })();
 
   if (isNewUser) {
     return (
