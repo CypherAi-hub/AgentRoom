@@ -94,7 +94,7 @@ const PLANS = [
       "No credit card required",
     ],
     ctaLabel: "Try it live",
-    ctaHref: "/signup",
+    ctaHref: "/signup?next=%2Fdashboard",
   },
   {
     eyebrow: "PRO",
@@ -111,7 +111,9 @@ const PLANS = [
     ],
     footnote: "Overage: $0.15/min after included usage",
     ctaLabel: "Start building faster",
-    ctaHref: "/signup?plan=pro",
+    // P1 #2 — preserve the upgrade intent through signup so the user lands on
+    // /billing?intent=upgrade after auth instead of being stranded on /dashboard.
+    ctaHref: "/signup?next=%2Fbilling%3Fintent%3Dupgrade&plan=pro",
     highlighted: true,
     badge: "MOST POPULAR",
   },
@@ -127,7 +129,7 @@ const PLANS = [
       "Perfect for one-off projects",
     ],
     ctaLabel: "Buy credits",
-    ctaHref: "/signup?intent=credits",
+    ctaHref: "/signup?next=%2Fbilling%3Fintent%3Dcredits&intent=credits",
   },
 ];
 
@@ -252,7 +254,7 @@ export default async function PricingPage() {
           </p>
 
           <Link
-            href="/signup"
+            href="/signup?next=%2Fdashboard"
             className="mt-7 inline-flex items-center justify-center transition hover:opacity-90"
             style={{
               height: 44,
@@ -472,7 +474,7 @@ export default async function PricingPage() {
             <span style={{ color: TOKEN.accentHero }}>results.</span>
           </h2>
           <Link
-            href="/signup"
+            href="/signup?next=%2Fdashboard"
             className="mt-6 inline-flex items-center justify-center transition hover:opacity-90"
             style={{
               height: 48,

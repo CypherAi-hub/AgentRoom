@@ -181,6 +181,54 @@ export function getAgentRunLimits(plan: BillingPlan): AgentRunLimits {
   };
 }
 
+/**
+ * P1 #4 — Idempotent profile bootstrap.
+ *
+ * The Supabase trigger on `auth.users` insert seeds a row in `public.profiles`,
+ * but for older accounts (or if the trigger ever misses) we want a safe
+ * fallback. Call this once per session from `(app)/layout.tsx` so the user
+ * always has a profile row before credit-gated routes render.
+ *
+ * Behavior:
+ *  - If the service-role key is missing, no-op (cannot bypass RLS to upsert).
+ *  - If a profile already exists, no-op (idempotent — never resets credits).
+ *  - Otherwise inserts a default `free` plan row with 10 starter credits.
+ */
+export async function ensureProfile(userId: string, email: string | null | undefined): Promise<void> {
+  if (!userId) return;
+
+  const credentials = getSupabaseCredentials();
+  if (!credentials || !credentials.serviceRoleKey) return;
+
+  const profileSupabase = createClient(credentials.url, credentials.serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+
+  try {
+    const { data: existing, error: readError } = await profileSupabase
+      .from("profiles")
+      .select("id")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (readError) return;
+    if (existing) return;
+
+    await profileSupabase
+      .from("profiles")
+      .upsert(
+        { id: userId, email: email ?? "", plan: "free", credits: 10 },
+        { onConflict: "id", ignoreDuplicates: true },
+      );
+  } catch {
+    // Never throw from layout-level bootstrap — failure here just means the
+    // user sees the same blank-state UX they would have without this call.
+  }
+}
+
 export async function getAuthenticatedBillingProfile(request: NextRequest): Promise<BillingProfileResult> {
   const credentials = getSupabaseCredentials();
 

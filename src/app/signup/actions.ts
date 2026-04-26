@@ -44,6 +44,37 @@ export async function signupAction(_prevState: SignupState, formData: FormData):
   });
 
   if (error) {
+    // P1 #3 — surface distinct messages so the user can act on them rather
+    // than retrying the same form blind.
+    const message = (error.message || "").toLowerCase();
+    const status = typeof error.status === "number" ? error.status : 0;
+
+    if (
+      message.includes("already registered") ||
+      message.includes("already been registered") ||
+      message.includes("user already") ||
+      status === 422
+    ) {
+      return { error: "An account with that email already exists. Try signing in instead." };
+    }
+
+    if (message.includes("password")) {
+      // Supabase password policy errors (length, strength, etc.).
+      return { error: error.message };
+    }
+
+    if (message.includes("rate") || status === 429) {
+      return { error: "Too many signup attempts. Wait a moment and try again." };
+    }
+
+    if (message.includes("invalid") && message.includes("email")) {
+      return { error: "Enter a valid email address." };
+    }
+
+    if (error.message) {
+      return { error: error.message };
+    }
+
     return { error: "Unable to create an account with those credentials." };
   }
 
