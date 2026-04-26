@@ -14,13 +14,33 @@ authorization, and expands the blast radius of a Supabase auth-cookie leak.
 
 So: two apps, two callbacks, two pairs of credentials.
 
-## Steps (do this once, on github.com)
+## OAuth App vs GitHub App — pick one
 
-1. Go to https://github.com/settings/developers → **New OAuth App**.
+This integration works with either:
+
+- **OAuth App** (`Iv1.*` Client ID) — classic, simpler. User grants
+  `read:user` + `repo` once and the token can list every repo they
+  can see. **Recommended for this MVP.**
+- **GitHub App** (`Iv23l*` Client ID) — newer, more granular. Permissions
+  configured on the App itself (the `scope=` query param is ignored).
+  User must **install** the App on each account/org they want exposed
+  before any user-to-server token sees those repos.
+
+Our `/api/integrations/github/connect` and `/callback` routes work for
+both. Pick OAuth App if you want zero install ceremony; pick GitHub App
+if you want per-org install controls.
+
+## Steps (OAuth App — recommended)
+
+1. Go to https://github.com/settings/applications/new
+   (or `https://github.com/settings/developers` → **OAuth Apps** tab →
+   **New OAuth App** — *not* the **GitHub Apps** tab).
 2. Fill in:
    - **Application name**: `Agent Room — Integrations`
-   - **Homepage URL**: `https://agentroom.app`
-   - **Authorization callback URL**: `https://agentroom.app/api/integrations/github/callback`
+   - **Homepage URL**: `https://www.agentroom.app`
+   - **Authorization callback URL**: `https://www.agentroom.app/api/integrations/github/callback`
+     **(must include the `www.` prefix — production redirects apex → www
+     and GitHub does an exact-match check on the callback URL.)**
    - **Application description** (optional): "Agent Room reads your
      repositories so AI agents can work on them. Read-only access."
 3. Click **Register application**.
@@ -28,6 +48,28 @@ So: two apps, two callbacks, two pairs of credentials.
    - Copy the **Client ID**.
    - Click **Generate a new client secret** → copy it immediately (it's
      shown once).
+
+## Steps (GitHub App — alternative)
+
+If you'd rather use a GitHub App:
+
+1. https://github.com/settings/apps/new
+2. Same name + homepage as above.
+3. **Identifying and authorizing users → Callback URL**:
+   `https://www.agentroom.app/api/integrations/github/callback` (with
+   `www.`).
+4. Check **Request user authorization (OAuth) during installation**.
+5. Permissions:
+   - **Repository → Metadata: Read-only** (default — leave it)
+   - Optional: **Issues: Read-only** if you plan to read issues
+6. **Where can this GitHub App be installed?** → **Any account** (so
+   users besides you can install it).
+7. Uncheck **Active** under Webhook (we don't use webhooks for this MVP).
+8. Click **Create GitHub App**, then copy the Client ID and click
+   **Generate a new client secret**.
+
+For GitHub Apps users will see an extra "Install on" step before
+authorize on first connect.
 
 ## Vercel env vars
 
