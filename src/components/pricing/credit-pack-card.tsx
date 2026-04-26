@@ -51,7 +51,7 @@ export function CreditPackCard({
     <motion.div
       whileHover={{ scale: 1.02 }}
       transition={{ duration: 0.2, ease: "easeOut" }}
-      className="relative flex flex-col rounded-[12px] border p-5"
+      className="relative flex flex-col rounded-2xl border p-5"
       style={cardStyle}
     >
       {badge ? (
@@ -90,7 +90,7 @@ export function CreditPackCard({
         className="mt-5 inline-flex w-full items-center justify-center transition hover:opacity-90"
         style={{
           height: 38,
-          borderRadius: 8,
+          borderRadius: 999,
           fontSize: 13,
           fontWeight: 600,
           background: highlighted ? TOKEN.accentHero : "transparent",

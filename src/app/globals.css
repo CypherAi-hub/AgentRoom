@@ -99,6 +99,17 @@
 :root {
   color-scheme: dark;
 
+  --ar-bg-deep: #05060a;
+  --ar-bg-soft: #0a0a0d;
+  --ar-surface: rgba(255, 255, 255, 0.04);
+  --ar-border: rgba(255, 255, 255, 0.08);
+  --ar-text-strong: #f5f7fb;
+  --ar-text-muted: rgba(245, 247, 251, 0.72);
+  --ar-text-faint: rgba(245, 247, 251, 0.45);
+  --ar-green: #3EE98C;
+  --ar-green-dim: rgba(62, 233, 140, 0.15);
+  --ar-font-serif: var(--font-instrument-serif), Georgia, "Times New Roman", serif;
+
   /* Token CSS vars — consume in raw CSS where Tailwind utilities aren't enough */
   --bg-base: #0A0A0A;
   --bg-surface: #111111;
@@ -149,6 +160,7 @@ body {
   width: 100%;
   overflow-x: hidden;
   background: var(--background);
+  scroll-behavior: smooth;
 }
 
 body {
@@ -215,6 +227,90 @@ input {
   background: var(--accent-hero);
   vertical-align: middle;
   animation: ar-blink 1s steps(1) infinite;
+}
+
+.ar-marketing-page {
+  min-height: 100vh;
+  color: var(--ar-text-strong);
+  background:
+    radial-gradient(circle at 76% 8%, rgba(62, 233, 140, 0.12), transparent 26%),
+    radial-gradient(circle at 8% 26%, rgba(68, 106, 255, 0.08), transparent 28%),
+    linear-gradient(180deg, var(--ar-bg-deep) 0%, var(--ar-bg-soft) 100%);
+}
+
+.ar-serif {
+  font-family: var(--ar-font-serif);
+  font-weight: 400;
+  letter-spacing: -0.035em;
+}
+
+.ar-headline {
+  font-family: var(--ar-font-serif);
+  font-size: clamp(2.4rem, 5.4vw, 5rem);
+  font-weight: 400;
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+}
+
+.ar-section-headline {
+  font-family: var(--ar-font-serif);
+  font-size: clamp(2rem, 4.4vw, 3.6rem);
+  font-weight: 400;
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+}
+
+.ar-headline em,
+.ar-section-headline em,
+.ar-serif em {
+  color: var(--ar-green);
+  font-style: italic;
+  font-feature-settings: "ss01";
+}
+
+.ar-eyebrow {
+  font-family: var(--font-jetbrains-mono), ui-monospace, monospace;
+  color: var(--ar-green);
+  font-size: 0.7rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.ar-pill-primary,
+.ar-pill-ghost {
+  display: inline-flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 14px 28px;
+  font-weight: 500;
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    background 180ms ease;
+}
+
+.ar-pill-primary {
+  background: var(--ar-green);
+  color: var(--ar-bg-deep);
+}
+
+.ar-pill-primary:hover {
+  box-shadow: 0 8px 24px var(--ar-green-dim);
+  transform: translateY(-1px);
+}
+
+.ar-pill-ghost {
+  border: 1px solid var(--ar-border);
+  background: transparent;
+  color: var(--ar-text-strong);
+}
+
+.ar-pill-ghost:hover {
+  border-color: rgba(62, 233, 140, 0.32);
+  transform: translateY(-1px);
 }
 
 /* Shimmer for skeleton loaders */

@@ -76,7 +76,7 @@ export function PlanCard({
     <motion.div
       whileHover={{ scale: 1.02 }}
       transition={{ duration: 0.2, ease: "easeOut" }}
-      className="relative flex flex-col rounded-[14px] border p-6"
+      className="relative flex flex-col rounded-2xl border p-6"
       style={cardStyle}
     >
       {badge ? (
@@ -176,7 +176,7 @@ export function PlanCard({
         className="inline-flex w-full items-center justify-center gap-2 transition hover:opacity-90"
         style={{
           height: 44,
-          borderRadius: TOKEN.radiusMd,
+          borderRadius: 999,
           fontWeight: 600,
           fontSize: 14,
           ...ctaStyle,
