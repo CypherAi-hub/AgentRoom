@@ -34,22 +34,42 @@ export function EmptyState({
   title,
   description,
   cta,
+  secondary,
+  emphasize = false,
 }: {
   title: string;
   description: string;
   cta?: { label: string; href: string };
+  secondary?: { label: string; href: string };
+  emphasize?: boolean;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-lg border border-dashed bg-card/50 px-6 py-12 text-center">
-      <h3 className="text-base font-semibold">{title}</h3>
-      <p className="mt-1.5 max-w-md text-sm text-muted-foreground">{description}</p>
-      {cta ? (
-        <Link
-          href={cta.href}
-          className="mt-5 inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
-        >
-          {cta.label}
-        </Link>
+    <div className="flex flex-col items-center justify-center rounded-lg border border-dashed bg-card/50 px-6 py-12 text-center sm:py-16">
+      {emphasize ? (
+        <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">{title}</h1>
+      ) : (
+        <h3 className="text-base font-semibold">{title}</h3>
+      )}
+      <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">{description}</p>
+      {cta || secondary ? (
+        <div className="mt-5 flex flex-col items-center gap-2 sm:flex-row sm:gap-3">
+          {cta ? (
+            <Link
+              href={cta.href}
+              className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
+            >
+              {cta.label}
+            </Link>
+          ) : null}
+          {secondary ? (
+            <Link
+              href={secondary.href}
+              className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md px-4 text-sm font-medium text-muted-foreground transition hover:text-foreground"
+            >
+              {secondary.label}
+            </Link>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );

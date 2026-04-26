@@ -40,10 +40,10 @@ export default async function RoomDetailPage({ params }: { params: Promise<Param
         <Link href="/rooms" className="inline-flex w-fit items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
           <ArrowLeft className="size-3.5" /> Back to rooms
         </Link>
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
+        <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+          <div className="min-w-0">
             <StatusPill status={room.status} />
-            <h1 className="mt-3 text-2xl font-semibold tracking-tight">{room.name}</h1>
+            <h1 className="mt-3 break-words text-xl font-semibold tracking-tight sm:text-2xl">{room.name}</h1>
             <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
               {room.description ?? "No description yet."}
             </p>

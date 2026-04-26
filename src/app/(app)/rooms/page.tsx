@@ -18,16 +18,16 @@ export default async function RoomsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <header className="flex flex-wrap items-end justify-between gap-3">
+      <header className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:flex-wrap sm:items-end">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Rooms</h1>
+          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Rooms</h1>
           <p className="mt-1 text-sm text-muted-foreground">Organize your runs and agents by project.</p>
         </div>
         <CreateRoomDialog />
       </header>
 
       {rooms.length ? (
-        <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <ul className="grid gap-3 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
           {rooms.map((room) => (
             <li key={room.id}>
               <Link
@@ -46,8 +46,11 @@ export default async function RoomsPage() {
         </ul>
       ) : (
         <EmptyState
-          title="Rooms organize your work."
-          description="Create one to start grouping runs, agents, and history by project."
+          emphasize
+          title="No rooms yet."
+          description="Rooms group related agents and runs together. Like Slack channels, but for AI work."
+          cta={{ label: "Create a room", href: "/rooms" }}
+          secondary={{ label: "Learn more", href: "/agents" }}
         />
       )}
     </div>

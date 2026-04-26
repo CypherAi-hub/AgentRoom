@@ -19,13 +19,13 @@ export default async function SettingsPage() {
   return (
     <div className="flex flex-col gap-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
+        <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Settings</h1>
         <p className="mt-1 text-sm text-muted-foreground">Account and billing essentials.</p>
       </header>
 
-      <section className="rounded-lg border bg-card p-5">
+      <section className="rounded-lg border bg-card p-5 sm:p-6">
         <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-muted-foreground">Account</h2>
-        <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+        <dl className="mt-4 grid gap-4 sm:grid-cols-2">
           <div>
             <dt className="text-xs text-muted-foreground">Email</dt>
             <dd className="mt-1 text-sm">{profile?.email ?? user.email ?? "—"}</dd>

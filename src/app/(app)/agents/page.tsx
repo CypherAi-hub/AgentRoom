@@ -17,12 +17,12 @@ export default async function AgentsPage() {
   return (
     <div className="flex flex-col gap-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Agents</h1>
+        <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Agents</h1>
         <p className="mt-1 text-sm text-muted-foreground">Your configured agents. Run them on real cloud machines.</p>
       </header>
 
       {agents.length ? (
-        <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <ul className="grid gap-3 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
           {agents.map((agent) => (
             <li key={agent.id} className="rounded-lg border bg-card p-5">
               <div className="flex items-center gap-3">
@@ -50,8 +50,11 @@ export default async function AgentsPage() {
         </ul>
       ) : (
         <EmptyState
-          title="Your agents are ready."
-          description="Default agents (Engineer, Designer, QA, PM) seed automatically on signup."
+          emphasize
+          title="No agents yet."
+          description="Agents are reusable task templates. Define one once, run it on demand or schedule it. Think of them as functions for your cloud desktop."
+          cta={{ label: "Create your first agent", href: "/dev/sandbox-test" }}
+          secondary={{ label: "Learn more", href: "/integrations" }}
         />
       )}
     </div>

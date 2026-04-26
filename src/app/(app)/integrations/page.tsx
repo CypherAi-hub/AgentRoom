@@ -1,6 +1,7 @@
 import { Github, Globe, MessageSquare, Mail, Sparkles, Database, Bug } from "lucide-react";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { EmptyState } from "@/components/dashboard/dashboard-shared";
 
 export const dynamic = "force-dynamic";
 
@@ -23,16 +24,24 @@ export default async function IntegrationsPage() {
   return (
     <div className="flex flex-col gap-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Integrations</h1>
+        <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Integrations</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Connect Agent Room to the tools your work already lives in. Real wiring lands in a future phase.
         </p>
       </header>
 
-      <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+      <EmptyState
+        emphasize
+        title="No tools connected yet."
+        description="Connect GitHub, Slack, Linear, and more. Your agents can read issues, post updates, ship code — with your approval."
+        cta={{ label: "Browse integrations", href: "/integrations" }}
+        secondary={{ label: "Learn more", href: "/agents" }}
+      />
+
+      <ul className="grid gap-3 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
         {COMING_SOON.map((item) => (
           <li key={item.name} className="rounded-lg border bg-card p-5">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div className="grid size-10 place-items-center rounded-md border bg-secondary">
                 <item.icon className="size-5 text-muted-foreground" aria-hidden="true" />
               </div>
