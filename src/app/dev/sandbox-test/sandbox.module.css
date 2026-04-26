@@ -1,0 +1,62 @@
+/*
+ * Local design tokens + shimmer keyframes for the /dev/sandbox-test route.
+ * These mirror the values in src/styles/design-tokens.ts (colocated until the
+ * shared tokens file lands on this branch — DO NOT diverge from those values).
+ *
+ * The class hooks below let TSX components pull token-driven colors without
+ * hardcoding hex values directly in JSX.
+ */
+
+.scope {
+  --ar-bg-base: #0A0A0A;
+  --ar-bg-surface: #111111;
+  --ar-bg-surface-hi: #161616;
+  --ar-bg-input: #0D0D0D;
+
+  --ar-border-subtle: rgba(255, 255, 255, 0.06);
+  --ar-border-default: rgba(255, 255, 255, 0.10);
+  --ar-border-strong: rgba(255, 255, 255, 0.16);
+
+  --ar-text-primary: #FAFAFA;
+  --ar-text-secondary: #A1A1A1;
+  --ar-text-muted: #6B6B6B;
+
+  --ar-accent-hero: #3EE98C;
+  --ar-accent-hero-dim: rgba(62, 233, 140, 0.12);
+  --ar-accent-hero-fg: #0A0A0A;
+
+  --ar-status-error: #E24B4A;
+  --ar-status-warn: #F5B544;
+  --ar-status-info: #6FAFE3;
+
+  --ar-shadow-glow: 0 0 0 1px rgba(62, 233, 140, 0.20), 0 0 24px rgba(62, 233, 140, 0.15);
+
+  background: var(--ar-bg-base);
+  color: var(--ar-text-primary);
+  min-height: 100vh;
+}
+
+@keyframes ar-shimmer {
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.02) 0%,
+    rgba(255, 255, 255, 0.06) 50%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  background-size: 800px 100%;
+  animation: ar-shimmer 1.6s linear infinite;
+}
+
+@keyframes ar-pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(62, 233, 140, 0.20), 0 0 12px rgba(62, 233, 140, 0.10); }
+  50%       { box-shadow: 0 0 0 1px rgba(62, 233, 140, 0.40), 0 0 28px rgba(62, 233, 140, 0.30); }
+}
+
+.pulseGlow {
+  animation: ar-pulse-glow 1.4s ease-in-out infinite;
+}
